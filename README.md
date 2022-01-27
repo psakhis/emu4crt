@@ -8,12 +8,12 @@ emu4crt is a Mednafen emulator mod intended to be used on a system connected to 
 It brings "pixel-perfect" rendering by switching host resolution to match emulated system resolution.
 
 * Mednafen modules ported to emu4crt: 
-  * Sony Playstation
-  * Sega Saturn (win64 only)
+  * Sony Playstation (with chd support and sbi files)
+  * Sega Saturn (win64 only) (with chd support)
   * Nintendo NES/Famicon (snes & snes_faust)
   * Nintendo Super NES/Super Famicom
-  * NEC PC Engine / PC Engine CD / SuperGrafx (pce & pce_fast)
-  * NEC PC-FX
+  * NEC PC Engine / PC Engine CD  (with chd support) / SuperGrafx (pce & pce_fast)
+  * NEC PC-FX (with chd support)
   * Sega Megadrive / Genesis
   * Sega Master System
 
