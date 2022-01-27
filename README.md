@@ -1,6 +1,6 @@
 # **Mednafen 1.29 - emu4crt - A18**
 
-## Important: This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
+### Important: This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
 
 emu4crt is a Mednafen emulator mod intended to be used on a system connected to a CRT screen, typically a 15kHz TV or an arcade monitor.
 
