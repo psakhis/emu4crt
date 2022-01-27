@@ -1,4 +1,6 @@
-# **Mednafen 1.26.1 - emu4crt - A13**
+# **Mednafen 1.29 - emu4crt - A18**
+
+# Important: This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
 
 emu4crt is a Mednafen emulator mod intended to be used on a system connected to a CRT screen, typically a 15kHz TV or an arcade monitor.
 
@@ -20,7 +22,7 @@ Many options, meaningless in a CRT screen usage, have been removed from Mednafen
   * OS: Windows 32/64bits
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
-emu4crt can be use in two modes:
+emu4crt can be use in three modes:
 
 * `Native Resolution`: Same resolution as emulated system.
    More custom resolution are required (see below)
@@ -28,6 +30,9 @@ emu4crt can be use in two modes:
 
 * `Super Resolution`: Requires only four 2560 pixel width resolutions.
    Avoid some resolution change during emulation
+
+* `Switchres`: Resolutions changes with libswitchres library of @Calamity. 
+  More information on their github https://github.com/antonioginer/switchres 
 
 ## Required resolutions
 
@@ -65,7 +70,7 @@ emu4crt can be use in two modes:
 | PAL  |   2560   |  288      |     50Hz    |
 |      |   2560   |  576      |     50Hz    |
 
-Custom resolutions can be added on Windows by using Calamity's CRT Emudriver (the best way!), Soft15Hz, Powerstrip, manufacturer drivers...
+Custom resolutions can be added on Windows by using Calamity's CRT Emudriver, Soft15Hz, Powerstrip, manufacturer drivers...
 
 For CRT Emudriver users:
  * emu4crt_NATIVE_RESOLUTIONS.txt contains all resolution informations to be added to VMMAKER's user_modes.ini.
@@ -79,13 +84,14 @@ To enable resolution switch, use "video.resolution_switch" parameter in mednafen
 
 * video.resolution_switch native -> to use native resolution mode
 * video.resolution_switch super  -> to use super resolution mode
+* video.resolution_switch switchres -> to use libswitchres mode (you need to configure switchres.ini properly!!)
 * video.resolution_switch 0 -> to disable resolution switch [DEFAULT MODE]
 
 emu4crt.exe can be placed in an existing mednafen.exe directory, both can share the same configuration file and all ressource files (firmwares, savestates, etc.).
 
 ## Limits and known issues
 
-- The emulator does not deal with resolution refresh rate. So, to get a deterministic behavior, a resolution must only exist at the expected refresh rate (ie. no 320x240 @ 55Hz).
+- For native and super modes, the emulator does not deal with resolution refresh rate. So, to get a deterministic behavior, a resolution must only exist at the expected refresh rate (ie. no 320x240 @ 55Hz). With switchres mode, refresh tries to match with expected refresh rate.
   
 - Using emu4crt, resolution switch is not seamless process as it is on a console or with some other emulators. At each resolution change, some sound and graphical glitches will occur. 
   
@@ -104,7 +110,9 @@ http://forum.arcadecontrols.com/index.php/topic,155264.0.html
 
 The Mednafen Team (https://mednafen.github.io)  for... Mednafen!
 
-CRT Emudriver's author, Calamity (http://geedorah.com/eiusdemmodi/forum/)
+CRT Emudriver's and libswitchres author, Calamity (http://geedorah.com/eiusdemmodi/forum/)
+
+Silmalik for this great emu4crt project!
 
 ArcadeControls.com (www.arcadecontrols.com)
 
