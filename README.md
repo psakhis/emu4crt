@@ -35,7 +35,7 @@ emu4crt can be use in three modes:
 * `Switchres`: Resolutions changes with libswitchres library of @Calamity. 
   More information on their github https://github.com/antonioginer/switchres 
 
-## Required resolutions (not tequeried for Switchres mode)
+## Required resolutions (not requeried for Switchres mode)
 
 ### `Native resolutions`
 
