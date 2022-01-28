@@ -830,33 +830,36 @@ int Video_SetSwitchresFS(int w,int h,double vfreq)
 
  retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result);
  printf("VIDEO - Video_SetSwitchresFS - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);
- retSR = sr_switch_to_mode(swres_result.width, swres_result.height, swres_result.refresh, swres_result.interlace, &swres_result);
- printf("VIDEO - Video_SetSwitchresFS - sr_switch_to_mode return: %u\n", (unsigned int)retSR); 
  
  sr_x_scale = swres_result.x_scale;
  sr_y_scale = swres_result.y_scale;
- 
  video_settings.xres = swres_result.width;
  video_settings.yres = swres_result.height;
  video_settings.xscale = 1;
  video_settings.yscale = 1; 
+  
+ retSR = sr_switch_to_mode(swres_result.width, swres_result.height, swres_result.refresh, swres_result.interlace, &swres_result);
+ printf("VIDEO - Video_SetSwitchresFS - sr_switch_to_mode return: %u\n", (unsigned int)retSR);         
  
- if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) 
-    if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
-      MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
- SDL_PumpEvents();       /*
- SDL_SetWindowSize(window, video_settings.xres , video_settings.yres); */
  return swres_result.width;
 }
 // end psakhis
 
 void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
 {
-  printf("VIDEO - Video_ChangeResolution - Requested video mode: %dx%d@%f\n", w, h, vfreq);
-
-  current_game_resolution_h = h;
-  current_game_resolution_w = w;
-
+  printf("VIDEO - Video_ChangeResolution - Requested video mode: %dx%d@%f\n", w, h, vfreq);  
+  
+  //psakhis
+  if (use_super_resolution) {
+      	w = 2560;
+  }  
+  if (use_super_resolution && resolution_to_change_h == current_game_resolution_h) { //no switch requeried
+  	sr_x_scale = (int) (w / resolution_to_change_w);  	
+  	sr_y_scale = (int) (h / resolution_to_change_h);  	
+  	printf("VIDEO - Video_ChangeResolution - Super resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);    	  	
+  	return;	
+  }  
+  //end psakhis    
   MarkNeedBBClear();
 
   // SLK TODO - rebuild HelpSurface on resolution change ???
@@ -885,18 +888,27 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
    //if(0)
     if (use_switchres) //psakhis new method
     {
-    	current_game_resolution_w = w = Video_SetSwitchresFS(w,h,vfreq);        	    		
+    	w = Video_SetSwitchresFS(w,h,vfreq);   
+    	if (w == current_game_resolution_w && resolution_to_change_h == current_game_resolution_h) { //no switch requeried
+    	 	printf("VIDEO - Video_ChangeResolution - Switchres Super resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);
+    	 	return;    	  	
+    	}  
+    	current_game_resolution_w = w;
+    	current_game_resolution_h = h;     	 	 
+    	
+    	if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) 
+         if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
+         SDL_PumpEvents();         
     }
     else
     {
-      sr_x_scale = 1;
-      sr_y_scale = 1;
       // Use good old NATIVE or SUPER switch resolution process
       SDL_DisplayMode current;
       SDL_DisplayMode mode;
       SDL_DisplayMode trymode;
       int displayIndex;
-      
+             
       displayIndex = SDL_GetWindowDisplayIndex(window);
       if(displayIndex < 0)
       {
@@ -917,15 +929,21 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
         printf("  VIDEO - Video_ChangeResolution - Display #%d: Current display mode is %dx%dpx @ %dhz.\n", displayIndex, current.w, current.h, current.refresh_rate);
         trymode.w = w;
         trymode.h = h;
-        trymode.refresh_rate = 0;
+        trymode.refresh_rate = (int) vfreq;
 
         if (SDL_GetClosestDisplayMode(displayIndex, &trymode, &mode) == NULL)
         {
           printf("  VIDEO - Video_ChangeResolution - No suitable display mode was found, %s\n",SDL_GetError());
         }
         else
-        {
-          printf("  VIDEO - Video_ChangeResolution - Received: \t%dx%dpx @ %dhz \n", mode.w, mode.h, mode.refresh_rate);
+        {   
+          //psakhis     
+          sr_x_scale = (int) (mode.w / resolution_to_change_w);
+          sr_y_scale = (int) (mode.h / resolution_to_change_h);
+          current_game_resolution_w = mode.w;
+          current_game_resolution_h = h;          
+          //end psakhis
+          printf("  VIDEO - Video_ChangeResolution - Received: \t%dx%dpx @ %dhz ,scale (%d,%d)\n", mode.w, mode.h, mode.refresh_rate,sr_x_scale,sr_y_scale);                                        
           #ifdef WIN32
           // Use Win32 API for resolution chang
           Video_WinSetVideoMode(mode.w,mode.h);
@@ -955,7 +973,7 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     default: SMDRect.y = h - SMDRect.h - 64;
   }
   SMDRect.w = w; // OSD rect w
-
+    
   //if(SMSurface)
   //{
   //  MDFN_PixelFormat SMFormat = SMSurface->format;
@@ -1113,7 +1131,7 @@ void Video_Sync(MDFNGI *gi)
   {
    use_super_resolution = true;
    printf("VIDEO - Video_Sync - apply SUPER resolution settings - set to 2560x%d\n",resolution_to_change_h);
-   video_settings.xres = current_game_resolution_w = 2560;  // for fullscreen mode
+   video_settings.xres = current_game_resolution_w = 2560;  // for fullscreen mode   
    VideoGI->nominal_width = 2560;  // SLK TODO: nothing else?
   }
   if(_resolution_switch == RES_SWITCHRES) // psakhis
@@ -1123,10 +1141,10 @@ void Video_Sync(MDFNGI *gi)
    retSR=sr_init_disp("auto",NULL);
    printf("VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);
    printf("VIDEO - Video_Sync - apply SWITCHRES resolution settings - set to %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);     
-   video_settings.xres = resolution_to_change_w = Video_SetSwitchresFS(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq); // for fullscreen mode
-   VideoGI->nominal_width = resolution_to_change_w;  // for windowed mode   
+   video_settings.xres = current_game_resolution_w = Video_SetSwitchresFS(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq); // for fullscreen mode
+   VideoGI->nominal_width = current_game_resolution_w;  // for windowed mode      
   }
-  video_settings.yres = current_game_resolution_h = resolution_to_change_h;  // for fullscreen mode  
+  video_settings.yres = current_game_resolution_h = resolution_to_change_h;  // for fullscreen mode    
   //VideoGI->nominal_height = resolution_to_change_h;  // for windowed mode -> psakhis:this destroys 224 rectangles on 240p  
   //printf("VideoGI->nominal_height %d vfreq %f \n",VideoGI->nominal_height ,resolution_to_change_vfreq);
   //psakhis
@@ -1139,7 +1157,7 @@ void Video_Sync(MDFNGI *gi)
   video_settings.yscalefs = 1;
   video_settings.videoip = 0;
   video_settings.shader = SHADER_NONE;
-  video_settings.stretch = 0;
+  video_settings.stretch = 0;  
  }
  //
  //
@@ -1386,7 +1404,12 @@ void Video_Sync(MDFNGI *gi)
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because no modes big enough for %dx%d."), trymode.w, trymode.h);
    goto TryWindowed;
   }
-
+  
+  //psakhis
+  sr_x_scale = (int) (mode.w / resolution_to_change_w);
+  sr_y_scale = (int) (mode.h / resolution_to_change_h);
+  //end psakhis
+     
   if(SDL_SetWindowDisplayMode(window, &mode) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowDisplayMode() failed: %s"), SDL_GetError());
@@ -1420,7 +1443,7 @@ void Video_Sync(MDFNGI *gi)
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because screen destination rectangle(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
    goto TryWindowed;
   }
-  printf("VIDEO - Video_sync - screen dest: %dx%d - %d,%d\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y); // SLK
+  printf("VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%d,%d)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
  }
  //
  //
@@ -2050,7 +2073,8 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
   if(use_native_resolution || use_super_resolution || use_switchres)
   {
    MDFN_Rect sub_dest_rect = screen_dest_rect;
-
+   
+   //printf("Sergi %d %d %d %d \n",src_rect.w,sr_x_scale,sub_dest_rect.w,screen_dest_rect.w);
    if((src_rect.w * sr_x_scale) > sub_dest_rect.w)
    {
     //printf("Horizontal crop: ON\n");
@@ -2115,21 +2139,33 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
        sub_dest_rect.w = screen_dest_rect.w;
        sub_dest_rect.y = screen_dest_rect.y + ((last_y - src_rect.y) * sr_y_scale); 
        sub_dest_rect.h = sub_src_rect.h * sr_y_scale;
-       //printf("    sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);       
+                     
+       //printf("sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);       
        if (sub_src_rect.w  > (sub_dest_rect.w / sr_x_scale)) // horizontal crop to fit screen
        {
-        //printf("    Horizontal centering ON - (sub_src_rect.w  vs sub_dest_rect.w / sr_x_scale):%d vs %d\n",sub_src_rect.w, (sub_dest_rect.w / sr_x_scale)); 
-        //psakhis horrible hack centering psx       
-        if (psx_native_resolution_bars && sub_src_rect.w > sub_dest_rect.w && sr_x_scale == 1) {        	        	 
-          sub_src_rect.x = 32 + ((sub_src_rect.w - sub_dest_rect.w) / 2);           	
-          sub_src_rect.w = sub_dest_rect.w / sr_x_scale;        
-        }
+       	//psakhis horrible hack centering psx       
+        //printf("Horizontal centering ON sub_src_rect.x = %d, (sub_src_rect.w  vs sub_dest_rect.w / sr_x_scale):%d vs %d\n",sub_src_rect.x,sub_src_rect.w, (sub_dest_rect.w / sr_x_scale));         
+        //if (psx_native_resolution_bars && sub_src_rect.w > sub_dest_rect.w && sr_x_scale == 1) {        	        	        
+        //  sub_src_rect.x = 32 + ((sub_src_rect.w - sub_dest_rect.w) / 2);           	
+        //  sub_src_rect.w = sub_dest_rect.w / sr_x_scale;        
+        //}
         //psakhis 
-        else { //SLK
-          sub_src_rect.x = (sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2;                         
+        //else { 
+          //SLK
+          // sub_src_rect.x = (sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2;  
+          //psakhis correct centering                       
+          sub_src_rect.x = sub_src_rect.x + ((sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2);
           sub_src_rect.w = sub_dest_rect.w / sr_x_scale;        
-	}
-       }      
+	//}
+       } 
+       
+       // OLD 1.24.1 stretch ok       
+       /*   if (sub_src_rect.w >= resolution_to_change_w) // horizontal crop to fit screen
+       {
+         sub_src_rect.x = sub_src_rect.x + ((sub_src_rect.w - resolution_to_change_w) / 2);
+         sub_src_rect.w = resolution_to_change_w;
+       }*/
+           
        if (native_resolution_vcenter == true) // default vertical centering
        {
         //printf("    Vertical centering ON - src_rect.h:%d sub_dest_rect.y:%d screen_dest_rect.h:%d sr_y_scale:%d \n",src_rect.h,sub_dest_rect.y,screen_dest_rect.h,sr_y_scale);

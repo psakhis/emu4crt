@@ -1305,13 +1305,13 @@ static int GameLoop(void *arg)
 		}                                                                                                                                                                                  
 	    if(use_super_resolution)                                                                                                                                                               
 	    {                                                                                                                                                                                      
-	      if(current_game_resolution_h != resolution_to_change_h)                                                                                                                              
+	      if((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h))                                                                                                                              	      
 	      {                                                                                                                                                                                    
-				resolution_to_change_w = 2560;                                                                                                                                     
+				//resolution_to_change_w = 2560;                                                                                                                                     
 				printf("MAIN - GameLoop - Super resolution to switch: 2560 x %d\n", resolution_to_change_h);                                                                       
 				NeedResolutionChange++;                                                                                                                                            
 	      }                                                                                                                                                                                    
-	      else {printf("MAIN - GameLoop - Super resolution change bypassed\n");}                                                                                                               
+	      else {printf("MAIN - GameLoop - Super resolution change bypassed\n");} //psakhis: no more bypassed for sr_x_scale reasons                                                                                                              
 		}                                                                                                                                                                                  
 		if(use_switchres)                                                                                                                                                                  
 	    {                                                                                                                                                                                      
