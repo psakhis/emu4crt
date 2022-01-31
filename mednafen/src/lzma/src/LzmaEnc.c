@@ -15,8 +15,10 @@
 #include "../include/LzmaEnc.h"
 
 #include "../include/LzFind.h"
-#ifndef _7ZIP_ST
-#include "../include/LzFindMt.h"
+#ifdef WIN32
+ #ifndef _7ZIP_ST
+  #include "../include/LzFindMt.h"
+ #endif
 #endif
 
 #ifdef SHOW_STAT
@@ -338,12 +340,14 @@ typedef struct
 
   UInt32 dictSize;
   SRes result;
-
-  #ifndef _7ZIP_ST
-  BoolInt mtMode;
-  // begin of CMatchFinderMt is used in LZ thread
-  CMatchFinderMt matchFinderMt;
-  // end of CMatchFinderMt is used in BT and HASH threads
+  
+  #ifdef WIN32 
+   #ifndef _7ZIP_ST
+   BoolInt mtMode;
+   // begin of CMatchFinderMt is used in LZ thread
+   CMatchFinderMt matchFinderMt;
+   // end of CMatchFinderMt is used in BT and HASH threads
+   #endif
   #endif
 
   CMatchFinder matchFinderBase;
@@ -1061,9 +1065,11 @@ void LzmaEnc_Construct(CLzmaEnc *p)
   RangeEnc_Construct(&p->rc);
   MatchFinder_Construct(&p->matchFinderBase);
   
-  #ifndef _7ZIP_ST
-  MatchFinderMt_Construct(&p->matchFinderMt);
-  p->matchFinderMt.MatchFinder = &p->matchFinderBase;
+  #ifdef WIN32
+   #ifndef _7ZIP_ST
+   MatchFinderMt_Construct(&p->matchFinderMt);
+   p->matchFinderMt.MatchFinder = &p->matchFinderBase;
+   #endif
   #endif
 
   {
@@ -1101,10 +1107,12 @@ void LzmaEnc_FreeLits(CLzmaEnc *p, ISzAllocPtr alloc)
 
 void LzmaEnc_Destruct(CLzmaEnc *p, ISzAllocPtr alloc, ISzAllocPtr allocBig)
 {
-  #ifndef _7ZIP_ST
-  MatchFinderMt_Destruct(&p->matchFinderMt, allocBig);
+  #ifdef WIN32
+   #ifndef _7ZIP_ST
+   MatchFinderMt_Destruct(&p->matchFinderMt, allocBig);
+   #endif
   #endif
-  
+
   MatchFinder_Free(&p->matchFinderBase, allocBig);
   LzmaEnc_FreeLits(p, alloc);
   RangeEnc_Free(&p->rc, alloc);
@@ -1125,8 +1133,10 @@ static SRes LzmaEnc_Alloc(CLzmaEnc *p, UInt32 keepWindowSize, ISzAllocPtr alloc,
   if (!RangeEnc_Alloc(&p->rc, alloc))
     return SZ_ERROR_MEM;
 
-  #ifndef _7ZIP_ST
-  p->mtMode = (p->multiThread && !p->fastMode && (p->matchFinderBase.btMode != 0));
+  #ifdef WIN32
+   #ifndef _7ZIP_ST
+   p->mtMode = (p->multiThread && !p->fastMode && (p->matchFinderBase.btMode != 0));
+   #endif
   #endif
 
   {
@@ -1150,9 +1160,9 @@ static SRes LzmaEnc_Alloc(CLzmaEnc *p, UInt32 keepWindowSize, ISzAllocPtr alloc,
   if (beforeSize + p->dictSize < keepWindowSize)
     beforeSize = keepWindowSize - p->dictSize;
 
-  #ifndef _7ZIP_ST
-  if (p->mtMode)
-  {
+   #if defined WIN32 && !defined _7ZIP_ST
+   if (p->mtMode)
+   {
     RINOK(MatchFinderMt_Create(&p->matchFinderMt, p->dictSize, beforeSize, p->numFastBytes,
         LZMA_MATCH_LEN_MAX
         + 1  /* 18.04 */
@@ -1161,15 +1171,15 @@ static SRes LzmaEnc_Alloc(CLzmaEnc *p, UInt32 keepWindowSize, ISzAllocPtr alloc,
     p->matchFinderBase.bigHash = (Byte)(
         (p->dictSize > kBigHashDicLimit && p->matchFinderBase.hashMask >= 0xFFFFFF) ? 1 : 0);
     MatchFinderMt_CreateVTable(&p->matchFinderMt, &p->matchFinder);
-  }
-  else
-  #endif
-  {
+   }
+   else
+   #endif
+   {
     if (!MatchFinder_Create(&p->matchFinderBase, p->dictSize, beforeSize, p->numFastBytes, LZMA_MATCH_LEN_MAX, allocBig))
       return SZ_ERROR_MEM;
     p->matchFinderObj = &p->matchFinderBase;
     MatchFinder_CreateVTable(&p->matchFinderBase, &p->matchFinder);
-  }
+   }
   
   return SZ_OK;
 }
