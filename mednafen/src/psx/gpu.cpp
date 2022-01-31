@@ -120,18 +120,19 @@ void GPU_NewDisplayMode(int V)  // SLK - identify GPU new resolution, set global
   // Height
   if ((V & 8) == 8)
   { //PAL
-    resolution_to_change_vfreq = 50; // TODO: find a better value ???
+    resolution_to_change_vfreq = 50; // TODO: find a better value ??? 49.761 for 288
     if ((V & 32) == 32) {resolution_to_change_h = 576;} //5 
-    else {resolution_to_change_h = 288;}
+    else {resolution_to_change_h = 288;
+          resolution_to_change_vfreq = 49.761;}
   }
   else
   { // NTSC
     if ((V & 32) == 32){
-        resolution_to_change_vfreq = 59.94;
+        resolution_to_change_vfreq = 59.941;
         resolution_to_change_h = 480;
         } //5
     else {
-      resolution_to_change_vfreq = 59.83;
+      resolution_to_change_vfreq = 59.826;
       resolution_to_change_h = 240;
       }
   }
@@ -284,7 +285,7 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
 
   gi->fb_height = 480;
   gi->fps = 1005627336; // 65536*256 * 53693182 / (3412.5 * 262.5)
-  gi->VideoSystem = VIDSYS_NTSC;
+  gi->VideoSystem = VIDSYS_NTSC;  
  }
 
 
