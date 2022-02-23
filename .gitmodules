@@ -1,0 +1,9 @@
+[submodule "mednafen/mednafen/src/switchres"]
+	path = mednafen/mednafen/src/switchres
+	url = https://github.com/antonioginer/switchres.git
+[submodule "src/switchres"]
+	path = src/switchres
+	url = https://github.com/antonioginer/switchres.git
+[submodule "mednafen/src/switchres"]
+	path = mednafen/src/switchres
+	url = https://github.com/antonioginer/switchres.git
