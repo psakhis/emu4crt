@@ -1,0 +1,37 @@
+# Maintainer: Jonathan Steel <jsteel at archlinux.org>
+# Contributor: megadriver <megadriver at gmx dot com>
+# Contributor: Angel Velasquez <angvp@archlinux.org>
+# Contributor: Daenyth <Daenyth+Arch [at] gmail [dot] com>
+# Contributor: kagan <juanynie@mi.madritel.es>
+# Contributor: Hans-Kristian Arntzen <maister@archlinux.us>
+
+pkgname=mednafen
+pkgver=1.29
+pkgrel=1
+pkgdesc="Command-line multi-system gaming emulator"
+url="https://mednafen.github.io"
+license=('GPL2')
+arch=('x86_64')
+depends=('libsndfile' 'sdl2' 'zlib' 'alsa-lib')
+makedepends=('mesa' 'glu')
+source=(https://github.com/psakhis/emu4crt/releases/download/1.29-A18.2/mednafen-1.29-emu4crt-A18-2.tar.xz)
+md5sums=('760499571cc65526cacdb21f270a60f3')
+
+build() {
+  cd $pkgname
+
+  ./configure --prefix=/usr
+
+  make
+}
+
+package() {
+  cd $pkgname
+
+  make DESTDIR="$pkgdir" install
+
+  for i in ABOUT-NLS AUTHORS ChangeLog COPYING INSTALL NEWS \
+           README{,.DOS,.PORTING} TODO; do
+    install -Dm644 $i "$pkgdir"/usr/share/doc/$pkgname/$i
+  done
+}
