@@ -889,15 +889,7 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     	 	return;    	  	
     	}  
     	current_game_resolution_w = w;
-    	current_game_resolution_h = h;     	 	 
-    	
-    	//Not needed 
-    	/*
-    	if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) 
-         if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
-          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
-         SDL_PumpEvents();         
-        */
+    	current_game_resolution_h = h;     	 	     	    	        
     }
     else
     {
@@ -998,25 +990,47 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
   }
   printf("  VIDEO - Video_ChangeResolution - screen dest: %dx%d - %d,%d\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
   
-  //Not needed on fullscreen 
-  //SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h); 
+  //Not needed on fullscreen on linux
+  /*
+  #ifdef WIN32
+   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
+  #endif 
+  */ 
   //end psakhis
     
   video_settings.xres = w;
   video_settings.yres = h;
   video_settings.xscalefs = 1;
   video_settings.yscalefs = 1;    
-      
+ 
+ //Not needed for linux but yes for windows??    
+ /*	
+    	if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) {
+    	 printf("  VIDEO - Video_ChangeResolution - Not fullscreen exclusive mode \n");	
+         if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
+         SDL_PumpEvents();         
+        }      
+*/        
 }
 // SLK + psakhis end
 
 //psakhis refresh blitter
 void Video_BlitRefresh() { 
-  //MarkNeedBBClear(); 	
+  MarkNeedBBClear(); 	  
+  #ifdef WIN32   
+   if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) {
+    	 printf("  VIDEO - Video_ChangeResolution - Not fullscreen exclusive mode \n");	
+         if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
+          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
+         SDL_PumpEvents();         
+   }      
+   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
+   SDL_PumpEvents();         
+  #endif 
   ogl_blitter->SetViewport(screen_w, screen_h);
   printf("  VIDEO - Video_BlitRefresh completed\n");
 }
-//psakhis end
 
 void Video_Sync(MDFNGI *gi)
 {
