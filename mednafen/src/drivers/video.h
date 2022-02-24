@@ -37,7 +37,7 @@ void Video_Init(void) MDFN_COLD;
 void Video_Sync(MDFNGI* gi);
 
 // SLK
-void Video_ChangeResolution(MDFNGI* gi, int w, int h, double vfreq); //false - no refresh needed
+int Video_ChangeResolution(MDFNGI* gi, int w, int h, double vfreq); //false - no refresh needed
 void Video_BlitRefresh(); //psakhis
 
 void Video_Exposed(void);

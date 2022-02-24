@@ -502,7 +502,7 @@ void MDFNSS_SaveSM(Stream *st, bool data_only, const MDFN_Surface *surface, cons
 	  //if(use_super_resolution) psakhis
 	  {
 	    neowidth = resolution_to_change_w;
-	    neoheight = DisplayRect->h;
+	    neoheight = DisplayRect->h;	    
 	  }
 	  // SLK - end
 	  
@@ -624,8 +624,16 @@ void MDFNSS_LoadSM(Stream *st, bool data_only, const int fuzz)
 	 stateversion = MDFN_de32lsb(header + 16);
 	 total_len = MDFN_de32lsb(header + 20) & 0x7FFFFFFF;
          svbe = MDFN_de32lsb(header + 20) & 0x80000000;
-         width = MDFN_de32lsb(header + 24);
+         width = MDFN_de32lsb(header + 24);         
          height = MDFN_de32lsb(header + 28);
+         
+         //psakhis: restore resolution onLoadState
+         resolution_to_change_w = width;
+         resolution_to_change_h = height;
+         resolution_to_change = true;
+         printf("STATE - MDFNSS_LoadSM - Restored resolution %dx%d\n",width,height);
+         //psakhis end
+         
 	 preview_len = width * height * 3;
 
 	 if((int)stateversion < 0x900)	// Ensuring that (int)stateversion is > 0 is the most important part.
@@ -899,12 +907,12 @@ bool MDFNI_LoadState(const char *fname, const char *suffix) noexcept
    MDFNMOV_RecordState();
 
   MDFND_SetStateStatus(NULL);
-
+  
   if(!fname && !suffix)
   {
    SaveStateStatus[CurrentState] = true;
    MDFN_Notify(MDFN_NOTICE_STATUS, _("State %d loaded."), CurrentState);
-  }
+  }    
  }
  catch(std::exception &e)
  {

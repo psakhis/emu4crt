@@ -1306,7 +1306,7 @@ void DebuggerFudge(void)
 static int GameLoop(void *arg)
 {
 	while(GameThreadRun)
-	{	 	  
+	{		 	 	  
          int16 *sound;
          int32 ssize;
          bool fskip;
@@ -1364,6 +1364,7 @@ static int GameLoop(void *arg)
 	  MDFNI_Emulate(&estmp);
 	  state0.rewind();
 	  MDFNSS_LoadSM(&state0);
+	  printf("LOAD Sergi\n");
 	 }
 
 	 if(MDFN_UNLIKELY(StateRCTest))
@@ -1400,15 +1401,15 @@ static int GameLoop(void *arg)
 	 }
 	 else
           MDFNI_Emulate(&espec);
-	 
-	 //psakhis: activate change on switch thread just after emulated frame
+          
+	 //psakhis: activate change on switch thread 
 	 if (resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
 	  NeedResolutionChange++; //redundant 
 	  MThreading::Sem_Post(STWakeupSem);	
 	  resolution_to_change = false;
 	 }
-	 //psakhis end
-	 	 
+	 //psakhis end	 
+	 	 	 
 	 if(MDFN_UNLIKELY(StateSLSTest))
 	 {
 	  MemoryStream orig_state(524288);
@@ -1431,8 +1432,7 @@ static int GameLoop(void *arg)
 	   //assert(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32));
 	   abort();
 	  }
-	 }
-
+	 }	 
 	 ers.AddEmuTime((espec.MasterCycles - espec.MasterCycles_DriverProcessed) / CurGameSpeed);
 
 	 SoftFB[SoftFB_BackBuffer].rect = espec.DisplayRect;
@@ -1493,17 +1493,16 @@ static int SwitchLoop(void *arg)
 {
 	while(SwitchThreadRun) {	
 	 //printf("SWITCH - Sleeping - Waiting for the next change\n");
-	 if (MThreading::Sem_Wait(STWakeupSem)) { //activator semaphore from main loop	  
+	 if (MThreading::Sem_Wait(STWakeupSem)) { //activator semaphore from main loop	  	 	
 	  if(MDFN_LIKELY(NeedResolutionChange) && !MDFN_LIKELY(NeedResolutionRefresh))  //redundant, safetly close
 	  {     
 	    if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h)) {  
-	      printf("SWITCH - Activated - Changing to %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
-	      Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);	    	    
-	      NeedResolutionRefresh++;	    
+	      printf("SWITCH - Activated - Current resolution %dx%d - Changing to %dx%d@%f\n",current_game_resolution_w,current_game_resolution_h,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
+	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);	    	    	      
 	    } 
 	    else {
-	      printf("SWITCH - Activated - Bypassed from %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           			      
-	      NeedResolutionChange--;	    
+	      printf("SWITCH - Activated - Bypassed from %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           			      	      
+	      NeedResolutionChange--;	    	      
 	    }
 	  }                                     
 	 }                                      	                                                                                                         		

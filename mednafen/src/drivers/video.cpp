@@ -827,7 +827,7 @@ int Video_SetSwitchres(int w,int h,double vfreq)
  unsigned char interlace = 0;	       
  if (h > 288) 
   interlace = 1;
-
+ 
  retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result);
  printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);
  
@@ -846,9 +846,9 @@ int Video_SetSwitchres(int w,int h,double vfreq)
 //SLK + psakhis end
 
 //SLK + psakhis
-void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
+int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
 {
-  printf("  VIDEO - Video_ChangeResolution - Requested video mode: %dx%d@%f\n", w, h, vfreq);  
+  printf("  VIDEO - Video_ChangeResolution - Requested video mode: %dx%d@%f\n", w, h, vfreq);      
   
   //psakhis
   if (use_super_resolution) {
@@ -858,7 +858,8 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
   	sr_x_scale = (int) (w / resolution_to_change_w);  	
   	sr_y_scale = (int) (h / resolution_to_change_h);  	
   	printf("  VIDEO - Video_ChangeResolution - Super resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);    	  	
-  	return;	
+  	MarkNeedBBClear();
+  	return 0;	
   }  
   //end psakhis      
   
@@ -886,7 +887,8 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     	w = Video_SetSwitchres(w,h,vfreq);   
     	if (w == current_game_resolution_w && resolution_to_change_h == current_game_resolution_h) { //no switch requiered
     	 	printf("  VIDEO - Video_ChangeResolution - Switchres resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);
-    	 	return;    	  	
+    	 	MarkNeedBBClear();
+    	 	return 0;    	  	
     	}  
     	current_game_resolution_w = w;
     	current_game_resolution_h = h;     	 	     	    	        
@@ -903,7 +905,7 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
       if(displayIndex < 0)
       {
         printf("  VIDEO - Video_ChangeResolution - ERROR Could not get screen index: %s\n", SDL_GetError());
-        return;
+        return 0;
       }
       else
       {
@@ -936,9 +938,7 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
           printf("  VIDEO - Video_ChangeResolution - Received: \t%dx%dpx @ %dhz ,scale (%d,%d)\n", mode.w, mode.h, mode.refresh_rate,sr_x_scale,sr_y_scale);                                        
           #ifdef WIN32
           // Use Win32 API for resolution chang
-          Video_WinSetVideoMode(mode.w,mode.h);
-          //Not needed
-          //SDL_SetWindowSize(window, w, h); 
+          Video_WinSetVideoMode(mode.w,mode.h);          
           #else
           // Use SDL video change function - may be slower
           if(SDL_SetWindowDisplayMode(window, &mode) < 0)
@@ -975,59 +975,44 @@ void Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
 
   //printf("VIDEO - Video_ChangeResolution - Resize video output to %dx%d\n", w, h);
   //SDL_SetWindowSize(window, w, h);   
-  
-  //psakhis
-  VideoGI->nominal_width = w;
-  if (h * 2 == VideoGI->nominal_height || h * 0.5 == VideoGI->nominal_height) //only changes interlaced/progressive
-    	  VideoGI->nominal_height = h;  
-    	  
-  screen_w = w;
-  screen_h = h;
-  if (!GenerateFullscreenDestRect()) {
-    GenerateWindowedDestRect();
-    screen_w = screen_dest_rect.w;  
-    screen_h = screen_dest_rect.h; 
-  }
-  printf("  VIDEO - Video_ChangeResolution - screen dest: %dx%d - %d,%d\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
-  
-  //Not needed on fullscreen on linux
-  /*
-  #ifdef WIN32
-   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
-  #endif 
-  */ 
-  //end psakhis
-    
+        
   video_settings.xres = w;
   video_settings.yres = h;
   video_settings.xscalefs = 1;
   video_settings.yscalefs = 1;    
+  
+  return 1;    
  
- //Not needed for linux but yes for windows??    
- /*	
-    	if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) {
-    	 printf("  VIDEO - Video_ChangeResolution - Not fullscreen exclusive mode \n");	
-         if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
-          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
-         SDL_PumpEvents();         
-        }      
-*/        
 }
 // SLK + psakhis end
 
 //psakhis refresh blitter
 void Video_BlitRefresh() { 
-  MarkNeedBBClear(); 	  
+	
+  MarkNeedBBClear();
+  VideoGI->nominal_width = current_game_resolution_w;
+  if (current_game_resolution_h * 2 == VideoGI->nominal_height || current_game_resolution_h * 0.5 == VideoGI->nominal_height) //only changes interlaced/progressive
+    	  VideoGI->nominal_height = current_game_resolution_h;  
+    	  
+  screen_w = current_game_resolution_w;
+  screen_h = current_game_resolution_h;
+  if (!GenerateFullscreenDestRect()) {
+    GenerateWindowedDestRect();
+    screen_w = screen_dest_rect.w;  
+    screen_h = screen_dest_rect.h; 
+  }
+  
+  printf("  VIDEO - Video_BlitRefresh - screen dest: %dx%d - %d,%d\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
+        	
   #ifdef WIN32   
-   if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) {
+   /*if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) {
     	 printf("  VIDEO - Video_ChangeResolution - Not fullscreen exclusive mode \n");	
          if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
-          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());       
-         SDL_PumpEvents();         
-   }      
-   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
-   SDL_PumpEvents();         
-  #endif 
+          MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());                      
+   } */     
+   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);           
+  #endif
+     
   ogl_blitter->SetViewport(screen_w, screen_h);
   printf("  VIDEO - Video_BlitRefresh completed\n");
 }
