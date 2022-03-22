@@ -83,7 +83,7 @@ int res_change_count;
 
 
 void GPU_NewDisplayMode(int V)  // SLK - identify GPU new resolution, set global variables used in MAIN & VIDEO
-{
+{	 
   // GP1(08h) - Display mode
   //   0-1   Horizontal Resolution 1     (0=256, 1=320, 2=512, 3=640) ;GPUSTAT.17-18
   //   2     Vertical Resolution         (0=240, 1=480, when Bit5=1)  ;GPUSTAT.19
@@ -135,8 +135,7 @@ void GPU_NewDisplayMode(int V)  // SLK - identify GPU new resolution, set global
       resolution_to_change_vfreq = 59.826;
       resolution_to_change_h = 240;
       }
-  }
-  
+  }  
   if(prev_resolution_w != resolution_to_change_w || prev_resolution_h != resolution_to_change_h)
   {
     if(res_change_count < 2)
@@ -247,10 +246,10 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
 {
  ShowHOverscan = show_h_overscan;
  CorrectAspect = caspect;
- 
+ /* not needed anymore
  if (!CorrectAspect)  //psakhis
    psx_native_resolution_bars = true;    
- 
+ */
  HVis = ShowHOverscan ? HVisMax : HVisHideOS;
  HVisOffs = (HVisMax - HVis) / 2;
 
@@ -1287,7 +1286,13 @@ MDFN_FASTCALL pscpu_timestamp_t GPU_Update(const pscpu_timestamp_t sys_timestamp
    if(LinePhase)
    {
     TIMER_SetHRetrace(true);
-    LineClockCounter = 200;
+   // LineClockCounter = 200;
+   //psakhis HACK PAL60
+    if ((DisplayMode & 0x08) && psx_pal60) {
+    	LineClockCounter =  (200 * 50) / 59.94;
+    } else {
+    	LineClockCounter = 200;
+    }
     TIMER_ClockHRetrace();
    }
    else
@@ -1298,7 +1303,12 @@ MDFN_FASTCALL pscpu_timestamp_t GPU_Update(const pscpu_timestamp_t sys_timestamp
     TIMER_SetHRetrace(false);
 
     if(DisplayMode & 0x08)
-     LineClockCounter = 3405 - 200;
+    //psakhis
+      if (psx_pal60) {
+       LineClockCounter = ((3405 - 200) * 50) / 59.94;
+      } else { 
+          LineClockCounter = 3405 - 200;
+        }  
     else
      LineClockCounter = 3412 + PhaseChange - 200;
 

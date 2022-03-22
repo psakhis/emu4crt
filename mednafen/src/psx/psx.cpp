@@ -1615,7 +1615,8 @@ static MDFN_COLD void InitCommon(std::vector<CDInterface*> *CDInterfaces, const 
  sls = MDFN_GetSettingI((region == REGION_EU) ? "psx.slstartp" : "psx.slstart");
  sle = MDFN_GetSettingI((region == REGION_EU) ? "psx.slendp" : "psx.slend");
  correct_aspect = MDFN_GetSettingB("psx.correct_aspect");
-
+ psx_pal60 = MDFN_GetSettingB("psx.pal60"); //psakhis
+ 
  if(sls > sle)
  {
   int tmp = sls;
@@ -1663,7 +1664,7 @@ static MDFN_COLD void InitCommon(std::vector<CDInterface*> *CDInterfaces, const 
 
  DMA_Init();
 
- GPU_SetGetVideoParams(MDFNGameInfo, correct_aspect, sls, sle, MDFN_GetSettingB("psx.h_overscan"));
+ GPU_SetGetVideoParams(MDFNGameInfo, correct_aspect, sls, sle, MDFN_GetSettingB("psx.h_overscan")); 
 
  CDC->SetDisc(true, NULL, NULL);
 
@@ -2294,6 +2295,9 @@ static const MDFNSetting PSXSettings[] =
 #endif
 
  { "psx.dbg_exe_cdpath", MDFNSF_SUPPRESS_DOC | MDFNSF_CAT_PATH, gettext_noop("CD image to use with .PSX/.EXE loading."), NULL, MDFNST_STRING, "" },
+ 
+ //psakhis pal60
+ { "psx.pal60", MDFNSF_NOFLAGS, gettext_noop("Enable PAL60 Hack."), gettext_noop("Enables 60fps for PAL Games.") , MDFNST_BOOL, "0" },
 
  { NULL },
 };
