@@ -66,7 +66,8 @@ int current_game_resolution_w;
 int current_game_resolution_h;
 bool native_resolution_vcenter = true;
 // SLK end
-bool psx_native_resolution_bars = false; //psakhis
+//bool psx_native_resolution_bars = false; //psakhis
+bool psx_pal60 = false; //psakhis
 
 namespace Mednafen
 {

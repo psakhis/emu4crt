@@ -31,7 +31,8 @@ extern bool use_switchres;
 
 // scaling & positioning option - set by module, use in video.cpp
 extern bool native_resolution_vcenter;
-extern bool psx_native_resolution_bars; //psakhis hcenter psx
+//extern bool psx_native_resolution_bars; //psakhis hcenter psx (not needed anymore)
+extern bool psx_pal60; //psakhis
 
 // Change resolution request flag - set by module
 extern bool resolution_to_change;
