@@ -1616,6 +1616,7 @@ static MDFN_COLD void InitCommon(std::vector<CDInterface*> *CDInterfaces, const 
  sle = MDFN_GetSettingI((region == REGION_EU) ? "psx.slendp" : "psx.slend");
  correct_aspect = MDFN_GetSettingB("psx.correct_aspect");
  psx_pal60 = MDFN_GetSettingB("psx.pal60"); //psakhis
+ psx_cdspeed = MDFN_GetSettingUI("psx.cdspeed"); //psakhis
  
  if(sls > sle)
  {
@@ -2298,6 +2299,9 @@ static const MDFNSetting PSXSettings[] =
  
  //psakhis pal60
  { "psx.pal60", MDFNSF_NOFLAGS, gettext_noop("Enable PAL60 Hack."), gettext_noop("Enables 60fps for PAL Games.") , MDFNST_BOOL, "0" },
+ 
+ //psakhis cdspeed up 
+ { "psx.cdspeed", MDFNSF_NOFLAGS, gettext_noop("CD-ROM data transfer speed multiplier Hack."), NULL, MDFNST_UINT, "1", "1", "100" },
 
  { NULL },
 };

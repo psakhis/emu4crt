@@ -1097,7 +1097,29 @@ void PS_CDC::HandlePlayRead(void)
  SectorPipe_Pos = (SectorPipe_Pos + 1) % SectorPipe_Count;
  SectorPipe_In++;
 
- PSRCounter += 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1));
+ /*ini psakhis cdspeed based on libretro core*/
+ unsigned speed_mul;
+
+ if (Mode & MODE_SPEED) {
+      // We're in 2x mode
+  if (Mode & (MODE_CDDA | MODE_STRSND)) {
+        // We're probably streaming audio to the CD drive, keep the
+        // native speed
+        speed_mul = 2;
+    } else {
+        // *Probably* not streaming audio, we can try increasing the
+        // *CD speed beyond native
+        speed_mul = 2 * psx_cdspeed;
+    }
+  } else {
+     // 1x mode
+     speed_mul = 1;
+ }
+
+ PSRCounter += 33868800 / (75 * speed_mul);
+ /*end psakhis cdspeed*/
+
+ //PSRCounter += 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1));
 
  if(DriveStatus == DS_PLAYING)
  {
@@ -1219,7 +1241,8 @@ pscpu_timestamp_t PS_CDC::Update(const pscpu_timestamp_t timestamp)
      if(DriveStatus == DS_PAUSED || DriveStatus == DS_STANDBY)
       CurSector = std::max<int32>(-150, CurSector - 9);
 
-     PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1));
+    // PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1));
+    PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 * psx_cdspeed : 1)); //psakhis
     }
     else if(DriveStatus == DS_SEEKING_LOGICAL)
     {
@@ -1683,11 +1706,13 @@ int32 PS_CDC::CalcSeekTime(int32 initial, int32 target, bool motor_on, bool paus
   //else
   {
    // Take twice as long for 1x mode.
-   ret += 1237952 * ((Mode & MODE_SPEED) ? 1 : 2);
+   //ret += 1237952 * ((Mode & MODE_SPEED) ? 1 : 2);
+     ret += 1237952 / ((Mode & MODE_SPEED) ? psx_cdspeed : 0.5); //psakhis
   }
  }
  else if(abs_diff >= 3 && abs_diff < 12)
-  ret += 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1)) * 4;
+  //ret += 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1)) * 4;
+    ret += 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 * psx_cdspeed : 1)) * 4;
 
  //else if(target < initial)
  // ret += 1000000;
@@ -1868,7 +1893,8 @@ void PS_CDC::ReadBase(void)
   else if(DriveStatus != DS_PAUSED && DriveStatus != DS_STANDBY)
    SeekTarget = CurSector;
 
-  PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1)) + CalcSeekTime(CurSector, SeekTarget, DriveStatus != DS_STOPPED, DriveStatus == DS_PAUSED);
+ // PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1)) + CalcSeekTime(CurSector, SeekTarget, DriveStatus != DS_STOPPED, DriveStatus == DS_PAUSED);  
+  PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 * psx_cdspeed : 1)) + CalcSeekTime(CurSector, SeekTarget, DriveStatus != DS_STOPPED, DriveStatus == DS_PAUSED);  //psakhis
   HeaderBufValid = false;
   PreSeekHack(SeekTarget);
 
@@ -1990,9 +2016,9 @@ int32 PS_CDC::Command_Pause(const int arg_count, const uint8 *args)
   SeekTarget = CurSector;
   DriveStatus = DS_PAUSED;
   PSRCounter = 33868800 / (75 * ((Mode & MODE_SPEED) ? 2 : 1));
-
+  
   // An approximation.
-  return (1124584 + ((int64)CurSector * 42596 / (75 * 60))) * ((Mode & MODE_SPEED) ? 1 : 2) + PSX_GetRandU32(0, 100000);
+  return (1124584 + ((int64)CurSector * 42596 / (75 * 60))) * ((Mode & MODE_SPEED) ? 1 : 2) + PSX_GetRandU32(0, 100000);  
  }
 }
 
