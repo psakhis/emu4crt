@@ -68,6 +68,7 @@ bool native_resolution_vcenter = true;
 // SLK end
 //bool psx_native_resolution_bars = false; //psakhis
 bool psx_pal60 = false; //psakhis
+unsigned int psx_cdspeed = 1; //psakhis
 
 namespace Mednafen
 {

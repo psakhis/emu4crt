@@ -33,6 +33,7 @@ extern bool use_switchres;
 extern bool native_resolution_vcenter;
 //extern bool psx_native_resolution_bars; //psakhis hcenter psx (not needed anymore)
 extern bool psx_pal60; //psakhis
+extern unsigned int psx_cdspeed; //psakhis
 
 // Change resolution request flag - set by module
 extern bool resolution_to_change;
