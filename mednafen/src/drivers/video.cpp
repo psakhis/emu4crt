@@ -49,6 +49,8 @@
 
 #include <stdio.h> //psakhis 
 #include <stdlib.h> //psakhis
+#include <mednafen/general.h> //psakhis
+#include <mednafen/FileStream.h> //psakhis
 #include <mednafen/switchres/switchres_wrapper.h> //psakhis
 
 class SDL_to_MDFN_Surface_Wrapper : public MDFN_Surface
@@ -815,7 +817,7 @@ static void Video_WinSetVideoMode(int iWidth, int iHeight)
   Mode.dmDisplayFrequency = 59.941002;
 
   printf("ChangeDisplaySettings return: %ld\n",ChangeDisplaySettings(&Mode, CDS_FULLSCREEN));
-
+ 
 };
 #endif
 
@@ -827,20 +829,22 @@ int Video_SetSwitchres(int w,int h,double vfreq)
  unsigned char interlace = 0;	       
  if (h > 288) 
   interlace = 1;
- 
- retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result);
- printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);
- 
+
+ //retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result);
+    
+ //retSR = sr_switch_to_mode(swres_result.width, swres_result.height, swres_result.refresh, swres_result.interlace, &swres_result);
+ retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
+printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);
  sr_x_scale = swres_result.x_scale;
  sr_y_scale = swres_result.y_scale;
  video_settings.xres = swres_result.width;
  video_settings.yres = swres_result.height;
  video_settings.xscale = 1;
  video_settings.yscale = 1; 
-  
- retSR = sr_switch_to_mode(swres_result.width, swres_result.height, swres_result.refresh, swres_result.interlace, &swres_result);
+ 
  printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);         
  
+
  return swres_result.width;
 }
 //SLK + psakhis end
@@ -1124,7 +1128,7 @@ void Video_Sync(MDFNGI *gi)
  
  if(_resolution_switch){
   // Enable dynamic output resolution switch
-  printf("  VIDEO - Video_Sync - Output video resolution swithing: ON\n");
+  MDFNI_printf(_("  VIDEO - Video_Sync - Output video resolution swithing: ON\n"));
   if(_resolution_switch == RES_NATIVE) // Native Res
   {
    use_native_resolution = true;
@@ -1141,12 +1145,37 @@ void Video_Sync(MDFNGI *gi)
   }
   if(_resolution_switch == RES_SWITCHRES) // psakhis
   {
-   use_switchres = true;
-   sr_init();
+   use_switchres = true; 
+   MDFN_printf("\n");
+   MDFN_printf(_("Loading switchres.ini...\n"));
+   MDFN_printf("\n");
+   sr_init(); 
    retSR=sr_init_disp("auto",NULL);
+   //try system swithres.ini file
+   const std::string switchres_system_path = MDFN_MakeFName(MDFNMKF_PMCONFIG, 0, "switchres.ini").c_str();
+   MDFN_printf("\n");
+   MDFN_printf(_("Loading override switchres.ini from \"%s\"...\n"), switchres_system_path.c_str());      
+   try {
+     FileStream fs_switchres_system_path(switchres_system_path, FileStream::MODE_READ);            
+     sr_load_ini(strcpy((char*)malloc(switchres_system_path.length()+1), switchres_system_path.c_str()));     
+   } catch(MDFN_Error& e) {
+     MDFN_printf(_(" Failed: Error opening file \"%s\"...\n"), switchres_system_path.c_str()); 
+   }
+   const std::string switchres_game_path = MDFN_MakeFName(MDFNMKF_PGCONFIG, 0, "switchres.ini").c_str();
+   MDFN_printf("\n");
+   MDFN_printf(_("Loading override switchres.ini from \"%s\"...\n"), switchres_game_path.c_str());   
+   try {
+     FileStream fs_switchres_game_path(switchres_game_path, FileStream::MODE_READ);               
+     sr_load_ini(strcpy((char*)malloc(switchres_game_path.length()+1), switchres_game_path.c_str()));
+   } catch(MDFN_Error& e) {
+     MDFN_printf(_(" Failed: Error opening file \"%s\"...\n"), switchres_game_path.c_str()); 
+   }   
+   MDFN_printf("\n");
+   //end ini loadings
+   
    printf("  VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);
    printf("  VIDEO - Video_Sync - apply SWITCHRES resolution settings - set to %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);     
-   video_settings.xres = current_game_resolution_w = Video_SetSwitchres(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq); // for fullscreen mode
+   video_settings.xres = current_game_resolution_w = Video_SetSwitchres(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq); // for fullscreen mode   
    VideoGI->nominal_width = current_game_resolution_w;  // for windowed mode      
   }
   video_settings.yres = current_game_resolution_h = resolution_to_change_h;  // for fullscreen mode    
@@ -1188,7 +1217,9 @@ void Video_Sync(MDFNGI *gi)
  if(screen_dest_rect.w > 16383 || screen_dest_rect.h > 16383)
   throw MDFN_Error(0, _("Window size(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
 
- SDL_SetWindowFullscreen(window, 0);
+ if (!use_switchres) //psakhis (drmhook detected failure here)
+   SDL_SetWindowFullscreen(window, 0);
+   
  SDL_PumpEvents();
  SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
  SDL_PumpEvents();
@@ -1273,6 +1304,8 @@ void Video_Sync(MDFNGI *gi)
  //
  if(video_settings.fullscreen)
  {
+  if (!use_switchres)  //psakhis (not needed any change more)
+  {
   const unsigned xres = video_settings.xres;
   const unsigned yres = video_settings.yres;
   SDL_DisplayMode trymode;
@@ -1395,26 +1428,27 @@ void Video_Sync(MDFNGI *gi)
    goto TryWindowed;
   }
 
+  printf("trymode w %d, trymode h %d\n",trymode.w,trymode.h);
   if(xres > 0)
    trymode.w = xres;
 
   if(yres > 0)
    trymode.h = yres;
-  
+      
   if (resolution_to_change_vfreq > 0) //psakhis
    trymode.refresh_rate = resolution_to_change_vfreq;
-   
-  if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
+      
+ if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because no modes big enough for %dx%d."), trymode.w, trymode.h);
    goto TryWindowed;
   }
-  
+  printf("POST trymode.w %d, trymode.h %d",trymode.w,trymode.h);
   //psakhis
   sr_x_scale = (int) (mode.w / resolution_to_change_w);
   sr_y_scale = (int) (mode.h / resolution_to_change_h);
   //end psakhis
-     
+
   if(SDL_SetWindowDisplayMode(window, &mode) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowDisplayMode() failed: %s"), SDL_GetError());
@@ -1449,9 +1483,21 @@ void Video_Sync(MDFNGI *gi)
    goto TryWindowed;
   }
   printf("VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%d,%d)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
+ } //psakhis
+else {
+  MDFN_printf("VIDEO - Video_sync - init first video change bypassed: switchres applied \n");   
+  if(!GenerateFullscreenDestRect())
+  {
+   MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because screen destination rectangle(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
+   goto TryWindowed;
+  }  
+  printf("VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%d,%d)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK  
  }
+} //end fullscreen
+
  //
  //
+ 
  MDFN_printf(_("Driver: %s\n"), (vdriver == VDRIVER_OPENGL) ? _("OpenGL") : _("Software SDL") );
  //
  //
@@ -1468,14 +1514,15 @@ void Video_Sync(MDFNGI *gi)
 
   if(SDL_GetCurrentDisplayMode(dindex, &mode) < 0)
    throw MDFN_Error(0, "SDL_GetCurrentDisplayMode() failed: %s", SDL_GetError());
-
+    
   if(mode.refresh_rate)
-   MDFN_printf(_("Display Mode: %u x %u x %u bpp @ %dHz  (Window: %u x %u)\n"), mode.w, mode.h, SDL_BITSPERPIXEL(mode.format), mode.refresh_rate, screen_w, screen_h);
+   MDFN_printf(_("Display Mode not refreshed after kms: %u x %u x %u bpp @ %dHz  (Window: %u x %u)\n"), mode.w, mode.h, SDL_BITSPERPIXEL(mode.format), mode.refresh_rate, screen_w, screen_h);
   else
-   MDFN_printf(_("Display Mode: %u x %u x %u bpp  (Window: %u x %u)\n"), mode.w, mode.h, SDL_BITSPERPIXEL(mode.format), screen_w, screen_h);
+   MDFN_printf(_("Display Mode not refreshed after kms: %u x %u x %u bpp  (Window: %u x %u)\n"), mode.w, mode.h, SDL_BITSPERPIXEL(mode.format), screen_w, screen_h);
 
   if(vdriver != VDRIVER_OPENGL)
   {
+  	
    if(!(screen = SDL_GetWindowSurface(window)))
     throw MDFN_Error(0, _("SDL_GetWindowSurface() failed: %s"), SDL_GetError());
 
@@ -1533,8 +1580,8 @@ void Video_Sync(MDFNGI *gi)
     preferred_format = EVFSUPPORT_NONE;
 
    ogl_blitter = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
-   ogl_blitter->SetViewport(screen_w, screen_h);
-
+   ogl_blitter->SetViewport(screen_w, screen_h);   
+   
    emu_pf = game_pf;
   }
   catch(std::exception& e)
@@ -1548,6 +1595,7 @@ void Video_Sync(MDFNGI *gi)
     can't be easily supported without rewriting the filters.
     We do conversion to the real screen format in the blitting function. 
  */
+ 
 #ifdef WANT_FANCY_SCALERS
  if(CurrentScaler)
  {
@@ -1557,7 +1605,6 @@ void Video_Sync(MDFNGI *gi)
    SAI_SetFormat(emu_pf.opp * 8, emu_pf.Gprec == 5);
  }
 #endif
-
  {
   int xmu = std::max<int>(1, screen_w / 402);
   int ymu = std::max<int>(1, screen_h / 288);
@@ -1635,7 +1682,7 @@ void Video_Sync(MDFNGI *gi)
  //
  //
  //
- Video_SetWMInputBehavior(CurWMIB);
+ Video_SetWMInputBehavior(CurWMIB); 
 }
 
 void Video_Init(void)
@@ -2013,10 +2060,9 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
  }
 
 #if 1
- {
+ {/* psakhis OUT
   int sub[2] = { 0, 0 };
   SDL_DisplayMode mode;
-
   if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
    SDL_GetWindowPosition(window, &sub[0], &sub[1]);
 
@@ -2025,12 +2071,13 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
 
   if(SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(window), &mode) >= 0)
   {
-   JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;
+   JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;   
    JoyGunTranslate[0].sub = (float)sub[0] / screen_dest_rect.w;
 
    JoyGunTranslate[1].mul = (float)mode.h / screen_dest_rect.h / 32768.0;
    JoyGunTranslate[1].sub = (float)sub[1] / screen_dest_rect.h;
   }
+  */
  }
 #endif
  //
