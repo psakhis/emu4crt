@@ -738,14 +738,7 @@ static void Load(GameFile* gf)
    MDFN_printf(_("ROM:       %dKiB\n"), (unsigned)((size + 1023) / 1024));
    MDFN_printf(_("ROM CRC32: 0x%08x\n"), (unsigned int)crc32(0, whereToLoad, size));
    MDFN_printf(_("ROM MD5:   0x%s\n"), md5_context::asciistr(MDFNGameInfo->MD5, 0).c_str());
-   
-   //psakhis
-   resolution_to_change_w = 240;	
-   resolution_to_change_h = 240;
-   resolution_to_change_vfreq = 59.715400;
-   resolution_to_change = true;
-   //end psakhis
-   
+
    uint16 *temp = (uint16 *)(rom+((size+1)&~1));
    int i;
 
