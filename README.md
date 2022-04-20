@@ -12,7 +12,8 @@ It brings "pixel-perfect" rendering by switching host resolution to match emulat
   * Sega Saturn (win64 only) (with chd support)
   * Nintendo NES/Famicon (snes & snes_faust)
   * Nintendo Super NES/Super Famicom
-  * NEC PC Engine / PC Engine CD  (with chd support) / SuperGrafx (pce & pce_fast)
+  * Nintendo Game Boy Advance 
+  * NEC PC Engine / PC Engine CD / SuperGrafx (pce & pce_fast) (with chd support)
   * NEC PC-FX (with chd support)
   * Sega Megadrive / Genesis
   * Sega Master System
@@ -32,7 +33,7 @@ emu4crt can be use in three modes:
 * `Super Resolution`: Requires only four 2560 pixel width resolutions.
    Avoid some resolution change during emulation
 
-* `Switchres`: Resolutions changes with libswitchres library of @Calamity. 
+* `Switchres`: Resolutions changes with libswitchres library by @Calamity and Linux SDL/KMS by @Substring 
   More information on their github https://github.com/antonioginer/switchres 
 
 ## Required resolutions (not requiered for Switchres mode)
@@ -41,15 +42,17 @@ emu4crt can be use in three modes:
 
 * Columns:
   
-|       |256|320|341|352|368|512|640|704|
-|:------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-|NES*   | X |   |   |   |   |   |   |   |
-|SNES   | X |   |   |   |   | X |   |   |
-|SATURN |   | X |   | X |   |   | X | X |
-|PSX    | X | X |   |   | X | X | X |   |
-|PCE**  | X | X |   |   |   | X |   |   |
-|PCFX** | X |   | X |   |   |   |   |   |
-|MD/SMS | X | X |   |   |   |   |   |   |
+|       |240|256|320|341|352|368|512|640|704|
+|:------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+|NES*   |   | X |   |   |   |   |   |   |   |
+|SNES   |   | X |   |   |   |   | X |   |   |
+|GBA    | X |   |   |   |   |   |   |   |   |
+|SATURN |   |   | X |   | X |   |   | X | X |
+|PSX    |   | X | X |   |   | X | X | X |   |
+|PCE**  |   | X | X |   |   |   | X |   |   |
+|PCFX** |   | X |   | X |   |   |   |   |   |
+|MD/SMS |   | X | X |   |   |   |   |   |   |
+
 
 * Lines, for each column:
 
@@ -77,7 +80,7 @@ For CRT Emudriver users:
  * emu4crt_NATIVE_RESOLUTIONS.txt contains all resolution informations to be added to VMMAKER's user_modes.ini.
  * emu4crt_RESOLUTIONS_SUPER.txt
 
-For testing pupose, emu4crt can be used with a standard PC screen and video drivers in window mode.
+For testing pupose, emu4crt can be used with a standard PC screen and video drivers in window mode but for resolution switch set to fullscreen (video.fs 1)
 
 ## Configuration & usage
 
