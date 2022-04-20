@@ -116,6 +116,8 @@ The Mednafen Team (https://mednafen.github.io)  for... Mednafen!
 
 CRT Emudriver's and libswitchres author, Calamity (http://geedorah.com/eiusdemmodi/forum/)
 
+SDL KMS mode author, Substring (https://github.com/substring/os)
+
 Silmalik for this great emu4crt project!
 
 ArcadeControls.com (www.arcadecontrols.com)
