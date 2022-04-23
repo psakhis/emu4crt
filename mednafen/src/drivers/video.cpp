@@ -857,20 +857,21 @@ void Video_SetSwitchres(int w,int h,double vfreq,int init_sr)
   printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);         
  }  
  
- if (video_settings.fullscreen) 
- { //fullscreen
-  sr_x_scale = swres_result.x_scale;
-  sr_y_scale = swres_result.y_scale;   	
- } 
- else 
- { //windowed (no scale)
-   sr_x_scale = 1;
-   sr_x_scale = 1;
+ if (retSR && swres_result.width >= w && swres_result.height >= h) {
+  if (video_settings.fullscreen) 
+  { //fullscreen
+   sr_x_scale = swres_result.x_scale;
+   sr_y_scale = swres_result.y_scale;   	
+  } 
+  else 
+  { //windowed (no scale)
+    sr_x_scale = 1;
+    sr_x_scale = 1;
+  }
+  //update new resolution
+  video_settings.xres = swres_result.width;
+  video_settings.yres = swres_result.height;
  }
- //update new resolution
- video_settings.xres = swres_result.width;
- video_settings.yres = swres_result.height;
- 
 }
 //SLK + psakhis end
 
