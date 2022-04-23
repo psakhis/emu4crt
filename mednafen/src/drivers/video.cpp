@@ -1013,15 +1013,23 @@ void Video_BlitRefresh()
   VideoGI->nominal_width = current_game_resolution_w;
   if (current_game_resolution_h * 2 == VideoGI->nominal_height || current_game_resolution_h * 0.5 == VideoGI->nominal_height) //only changes between interlaced/progressive (to do clean hack)
     VideoGI->nominal_height = current_game_resolution_h;   
-      	  
-  screen_w = video_settings.xres;
-  screen_h = video_settings.yres;
-  if (!GenerateFullscreenDestRect()) {
-    GenerateWindowedDestRect();
-    screen_w = screen_dest_rect.w;  
-    screen_h = screen_dest_rect.h; 
-  }
   
+  if (video_settings.fullscreen)
+  {
+   screen_w = video_settings.xres;
+   screen_h = video_settings.yres;
+   if (!GenerateFullscreenDestRect()) {
+     GenerateWindowedDestRect();
+     screen_w = screen_dest_rect.w;  
+     screen_h = screen_dest_rect.h; 
+   }
+  }
+  else 
+  {
+     GenerateWindowedDestRect();
+     screen_w = screen_dest_rect.w;  
+     screen_h = screen_dest_rect.h; 
+  }
   printf("  VIDEO - Video_BlitRefresh - screen dest: %dx%d - %d,%d\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
         	
   #ifdef WIN32   
