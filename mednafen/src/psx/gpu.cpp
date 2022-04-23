@@ -118,7 +118,7 @@ void GPU_NewDisplayMode(int V)  // SLK - identify GPU new resolution, set global
       }
   }
   // Height
-  if ((V & 8) == 8)
+  if ((V & 8) == 8 && !psx_pal60) //psakhis
   { //PAL
     resolution_to_change_vfreq = 50; // TODO: find a better value ??? 49.761 for 288
     if ((V & 32) == 32) {resolution_to_change_h = 576;} //5 
@@ -165,8 +165,9 @@ void GPU_Init(bool pal_clock_and_tv)
   { -3,  1, -4,  0 },
   {  3, -1,  2, -2 },
  };
-
+ 
  HardwarePALType = pal_clock_and_tv;
+   
  //printf("%zu\n", (size_t)((uintptr_t)DitherLUT - (uintptr_t)this));
  //printf("%zu\n", (size_t)((uintptr_t)GPURAM - (uintptr_t)this));
  //
@@ -187,12 +188,12 @@ void GPU_Init(bool pal_clock_and_tv)
 
     DitherLUT[y][x][v] = value;
    }
-
+   
  if(HardwarePALType == false)	// NTSC clock
  {
   GPUClockRatio = 103896; // 65536 * 53693181.818 / (44100 * 768)
   hmc_to_visible = 520; 
-    
+       
   //SLK
   resolution_to_change_w = 640;
   resolution_to_change_h = 480;
@@ -203,16 +204,26 @@ void GPU_Init(bool pal_clock_and_tv)
  }
  else	// PAL clock
  {
-  GPUClockRatio = 102948; // 65536 * 53203425 / (44100 * 768)
-  hmc_to_visible = 560; 
+  GPUClockRatio = 102948; // 65536 * 53203425 / (44100 * 768)  
   
-  //SLK
-  resolution_to_change_w = 640;
-  resolution_to_change_h = 576;
-  resolution_to_change_vfreq = 50;
-  resolution_to_change = true;
-  printf("PSX - GPU Init - PAL mode - resolution set to: %dx%d\n",resolution_to_change_w,resolution_to_change_h);
-  
+  if (psx_pal60) 
+  {
+   hmc_to_visible = 520;
+   resolution_to_change_w = 640;
+   resolution_to_change_h = 480;
+   resolution_to_change_vfreq = 59.94; // TODO: need a better value
+   resolution_to_change = true;
+   printf("PSX - GPU Init - PAL60 mode - resolution set to: %dx%d\n",resolution_to_change_w,resolution_to_change_h); 
+  } else 
+  {
+   //SLK
+   hmc_to_visible = 560; 
+   resolution_to_change_w = 640;
+   resolution_to_change_h = 576;
+   resolution_to_change_vfreq = 50;
+   resolution_to_change = true;
+   printf("PSX - GPU Init - PAL mode - resolution set to: %dx%d\n",resolution_to_change_w,resolution_to_change_h);
+  }
  }
 
  memcpy(&Commands[0x00], Commands_00_1F, sizeof(Commands_00_1F));
@@ -255,6 +266,12 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
 
  LineVisFirst = sls;
  LineVisLast = sle;
+ 
+ if (HardwarePALType && psx_pal60) //psakhis: try vcenter 48 extra lines to match 240ntsc mode
+ {
+ 	LineVisFirst = LineVisFirst + 24;
+ 	LineVisLast =  LineVisLast - 24;
+ }
  //
  //
  //
@@ -265,7 +282,7 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
 
  gi->nominal_height = LineVisLast + 1 - LineVisFirst;
  gi->fb_width = FBWidth;
-
+ 
  //
  // Nominal fps values are for interlaced mode(fps will be lower in progressive mode), and will be slightly higher than actual fps
  // due to rounding error with GPUClockRatio.
@@ -276,15 +293,15 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
 
   gi->fb_height = 576;
   gi->fps = 838865530; // 65536*256 * 53203425 / (3405 * 312.5)
-  gi->VideoSystem = VIDSYS_PAL;
+  gi->VideoSystem = VIDSYS_PAL;  
  }
  else
  {
   gi->nominal_width = ((int64)gi->lcm_width * 12272727 / 53693182 + 1) / 2;
 
   gi->fb_height = 480;
-  gi->fps = 1005627336; // 65536*256 * 53693182 / (3412.5 * 262.5)
-  gi->VideoSystem = VIDSYS_NTSC;  
+  gi->fps = 1005627336; // 65536*256 * 53693182 / (3412.5 * 262.5)  
+  gi->VideoSystem = VIDSYS_NTSC;   
  }
 
 
@@ -1289,7 +1306,7 @@ MDFN_FASTCALL pscpu_timestamp_t GPU_Update(const pscpu_timestamp_t sys_timestamp
    // LineClockCounter = 200;
    //psakhis HACK PAL60
     if ((DisplayMode & 0x08) && psx_pal60) {
-    	LineClockCounter =  (200 * 50) / 59.94;
+    	LineClockCounter =  (200 * 50) / 59.94;   
     } else {
     	LineClockCounter = 200;
     }
@@ -1305,7 +1322,7 @@ MDFN_FASTCALL pscpu_timestamp_t GPU_Update(const pscpu_timestamp_t sys_timestamp
     if(DisplayMode & 0x08)
     //psakhis
       if (psx_pal60) {
-       LineClockCounter = ((3405 - 200) * 50) / 59.94;
+          LineClockCounter = ((3405 - 200) * 50) / 59.94;       
       } else { 
           LineClockCounter = 3405 - 200;
         }  
