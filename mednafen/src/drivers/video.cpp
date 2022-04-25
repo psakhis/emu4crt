@@ -830,32 +830,18 @@ static void Video_WinSetVideoMode(int iWidth, int iHeight)
 #endif
 
 //SLK + psakhis
-void Video_SetSwitchres(int w,int h,double vfreq,int init_sr)
+void Video_SetSwitchres(int w,int h,double vfreq)
 {
  printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f \n",w,h,vfreq); 
  sr_mode swres_result;
  unsigned char interlace = 0;	       
  if (h > 288) 
   interlace = 1;
- 
- #ifdef WIN32
-  init_sr = init_sr;
- #else
-  init_sr = 0;
- #endif
- 
- if (init_sr)      
- {
-  retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result); //only applied on win32 at first sdl change
-  printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);		
-  printf("  VIDEO - Video_SetSwitchres - sr_add_to_mode return: %u\n", (unsigned int)retSR);         
- } 
- else 
- {
-  retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
-  printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);		
-  printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);         
- }  
+    
+ //retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result); //only applied on win32 at first sdl change  
+ retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
+ printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);		
+ printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);          
  
  if (retSR && swres_result.width >= w && swres_result.height >= h) {
   if (video_settings.fullscreen) 
@@ -914,7 +900,7 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     {
     	int sr_x_scale_before_switch = sr_x_scale;
     	int xres_before_switch = video_settings.xres;   
-    	Video_SetSwitchres(w,h,vfreq,0);    	
+    	Video_SetSwitchres(w,h,vfreq);    	
     	if (video_settings.xres == xres_before_switch && h == current_game_resolution_h) { //no switch requiered
     		current_game_resolution_w = w;
     	 	printf("  VIDEO - Video_ChangeResolution - Switchres resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);
@@ -1176,7 +1162,19 @@ void Video_Sync(MDFNGI *gi)
    MDFN_printf(_("Loading switchres.ini...\n"));
    MDFN_printf("\n");
    sr_init(); 
-   retSR=sr_init_disp("auto",NULL);
+   
+   //take care multi-monitor
+   if (video_settings.fs_display >= 0) {
+    const std::string sr_monitor = MDFN_GetSettingS("video.fs.display");    
+    MDFN_printf(_("sr_init_disp with video_settings.fs_display \"%s\"...\n"), sr_monitor.c_str());
+    retSR=sr_init_disp(strcpy((char*)malloc(sr_monitor.length()+1), sr_monitor.c_str()),window);
+    
+   } 
+   else {    
+    MDFN_printf(_("sr_init_disp auto with video_settings.fs_display -1...\n"));
+    retSR=sr_init_disp("auto",window);    
+   }
+   
    //try system swithres.ini file
    const std::string switchres_system_path = MDFN_MakeFName(MDFNMKF_PMCONFIG, 0, "switchres.ini").c_str();   
    MDFN_printf(_("Loading override switchres.ini from \"%s\"...\n"), switchres_system_path.c_str());      
@@ -1199,7 +1197,8 @@ void Video_Sync(MDFNGI *gi)
    //end ini loadings
    
    printf("  VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);         
-   Video_SetSwitchres(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq,1); //SWITCH!     
+   video_settings.xres = 0; //sdl get desktop resolution - switch is delegated to switchres
+   video_settings.yres = 0; //sdl get desktop resolution - switch is delegated to switchres   
   }  
   current_game_resolution_w = resolution_to_change_w; // bypass next changes
   current_game_resolution_h = resolution_to_change_h; // bypass next changes  
@@ -1326,30 +1325,6 @@ void Video_Sync(MDFNGI *gi)
  //
  if(video_settings.fullscreen)
  {
- //psakhis drmhook bypass (to do clean)
- int prob_drmhook = 0; 
- #ifdef WIN32
- {
-  prob_drmhook = 0;
- } 
- #else
- {
-  if (use_switchres) prob_drmhook = 1; // on linux it's possible a drmhook, so no switch with SDL on dummy resolution
-   else prob_drmhook = 0;
- } 	
- #endif	 	  
- if (prob_drmhook) 
-  { 
-   MDFN_printf("VIDEO - Video_sync - fullscreen with switchres applied \n");
-   if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0) 
-   {
-    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());
-    goto TryWindowed;
-   }     
-   Video_BlitRefresh();    
- }	
- else   //end psakhis drmhook
- {      //legacy switch (static/native/super)
   const unsigned xres = video_settings.xres;
   const unsigned yres = video_settings.yres;
   SDL_DisplayMode trymode;
@@ -1479,24 +1454,25 @@ void Video_Sync(MDFNGI *gi)
   if(yres > 0)
    trymode.h = yres;
   
-  if (resolution_to_change_vfreq > 0) //psakhis
-   trymode.refresh_rate = resolution_to_change_vfreq;
-      
+  //psakhis - 50/60hz
+  if (use_super_resolution || use_native_resolution) 
+  { 
+   if (resolution_to_change_vfreq > 0) 
+    trymode.refresh_rate = resolution_to_change_vfreq;
+  } 
+  //end psakhis
+ 
  if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because no modes big enough for %dx%d."), trymode.w, trymode.h);
    goto TryWindowed;
-  }  
-  //psakhis
-  sr_x_scale = (int) (mode.w / resolution_to_change_w);
-  sr_y_scale = (int) (mode.h / resolution_to_change_h);
-  //end psakhis
+  }   
 
   if(SDL_SetWindowDisplayMode(window, &mode) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowDisplayMode() failed: %s"), SDL_GetError());
    goto TryWindowed;
-  }
+  }     
 
 #if 0
   int old_mousex = 0;
@@ -1508,7 +1484,18 @@ void Video_Sync(MDFNGI *gi)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());
    goto TryWindowed;
-  }
+  }    
+
+  //psakhis - delegate first switch to switchres
+ if (use_switchres) 
+ {
+   Video_SetSwitchres(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);
+   Video_BlitRefresh();  
+ }
+ else
+ {	
+   sr_x_scale = (int) (mode.w / resolution_to_change_w); //psakhis - scale corrected 
+   sr_y_scale = (int) (mode.h / resolution_to_change_h); //psakhis - scale corrected
 
 #if 0
   // ugggh
@@ -1524,9 +1511,11 @@ void Video_Sync(MDFNGI *gi)
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because screen destination rectangle(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
    goto TryWindowed;
   }
+ } 
+ //end psakhis 
   printf("  VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%d,%d)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
  } 
-} 
+ 
  //
  //
  MDFN_printf(_("Driver: %s\n"), (vdriver == VDRIVER_OPENGL) ? _("OpenGL") : _("Software SDL") );
