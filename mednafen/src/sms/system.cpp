@@ -19,7 +19,8 @@
 #include "shared.h"
 #include <mednafen/mempatcher.h>
 
-
+#include <mednafen/mednafen.h>
+#include <mednafen/SNSFLoader.h> //psakhis
 
 namespace MDFN_IEN_SMS
 {
@@ -28,6 +29,11 @@ bitmap_t bitmap;
 input_t input;
 static int32 SoftResetCount;
 static unsigned sls, sle;
+//psakhis 
+static bool SpecEx;
+static MemoryStream* SpecExSS = NULL;
+static int32 SpecExAudioExpected;
+//end psakhis
 
 /* Run the virtual console emulation for one frame */
 void system_frame(int skip_render)
@@ -180,15 +186,79 @@ static void Emulate(EmulateSpecStruct *espec)
 	assert(0);
 	break;
  }
+ 
+ if (sms.paused || !SpecEx) 
+ { 	
+ 	system_frame(espec->skip); 
+ 	espec->MasterCycles = sms.timestamp;
+        espec->SoundBufSize = SMS_SoundFlush(espec->SoundBuf, espec->SoundBufMaxSize);
+ }
+ else
+ {
+  /* psakhis run-ahead 1 frame (like snes_faust) */	
+  EmulateSpecStruct tmp_espec = *espec;
+  
+  if(espec->SoundFormatChanged || espec->NeedSoundReverse)
+   SpecExAudioExpected = -1;
 
- system_frame(espec->skip);
-
- espec->MasterCycles = sms.timestamp;
- espec->SoundBufSize = SMS_SoundFlush(espec->SoundBuf, espec->SoundBufMaxSize);
+  tmp_espec.skip = -1;
+  tmp_espec.NeedSoundReverse = false;
+  tmp_espec.VideoFormatChanged = false;
+  tmp_espec.SoundFormatChanged = false;
+  
+  if(!SpecExSS)
+   SpecExSS = new MemoryStream(524288); 
+     
+  system_frame(tmp_espec.skip); 
+  tmp_espec.MasterCycles = sms.timestamp;
+  tmp_espec.SoundBufSize = SMS_SoundFlush(tmp_espec.SoundBuf, tmp_espec.SoundBufMaxSize);
+  sms.timestamp=0;   
+  
+  MDFNSS_SaveSM(SpecExSS, true);
+  SpecExSS->rewind();
+ 
+  if(!espec->SoundBuf) {
+   system_frame(espec->skip);    
+  } 
+  else
+  {         
+   const int expected_delta = (SpecExAudioExpected >= 0) ? SpecExAudioExpected - tmp_espec.SoundBufSize : 0;
+   const int sbo = (expected_delta < 0) ? -expected_delta : 0;
+   
+   memmove(espec->SoundBuf, espec->SoundBuf + (tmp_espec.SoundBufSize - sbo) * 2, sbo * 2 * sizeof(int16));
+   espec->SoundBuf += sbo * 2;   
+   system_frame(espec->skip); 
+   espec->MasterCycles = sms.timestamp;
+   espec->SoundBufSize = SMS_SoundFlush(espec->SoundBuf, espec->SoundBufMaxSize);
+   sms.timestamp=0;
+   
+   SpecExAudioExpected = espec->SoundBufSize;
+   espec->SoundBuf -= sbo * 2;
+   espec->SoundBufSize += sbo;
+   if(expected_delta > 0 && espec->SoundBufSize >= expected_delta)
+   {
+    espec->SoundBufSize -= expected_delta;
+    memmove(espec->SoundBuf, espec->SoundBuf + expected_delta * 2, espec->SoundBufSize * 2 * sizeof(int16));
+   }   
+      
+  } 
+   MDFN_MidSync(espec, MIDSYNC_FLAG_NONE);
+   MDFNSS_LoadSM(SpecExSS, true);
+   SpecExSS->rewind();   
+ }
+ /* end psakhis run-ahead 1 frame */
+ 
 }
 
 static void Cleanup(void)
 {
+ //psakhis
+ if(SpecExSS)
+ {
+  delete SpecExSS;
+  SpecExSS = NULL;
+ }
+ //end psakhis
  Cart_Close();
  sms_shutdown();
  pio_shutdown();
@@ -215,6 +285,12 @@ static void LoadCommon(GameFile* gf)
 {
  try
  {
+  //
+  SpecEx = MDFN_GetSettingB("sms.spex");	
+  SpecExAudioExpected = -1;
+  MDFN_printf("SpecEx: %u\n", SpecEx);
+  //end psakhis
+  
   /* Assign default settings (US NTSC machine) */
   sms.display     = DISPLAY_NTSC;
 
@@ -399,6 +475,9 @@ static const MDFNSetting SMSSettings[] =
 
  { "sms.slstartp", MDFNSF_NOFLAGS, gettext_noop("First displayed scanline in PAL mode."), NULL, MDFNST_UINT, "0", "0", "239" },
  { "sms.slendp", MDFNSF_NOFLAGS, gettext_noop("Last displayed scanline in PAL mode."), NULL, MDFNST_UINT, "239", "0", "239" },
+ 
+ //psakhis
+ { "sms.spex", MDFNSF_NOFLAGS, gettext_noop("Enable 1-frame speculative execution for video output."), gettext_noop("Reduce input->output video latency by 1 frame introduced by core."), MDFNST_BOOL, "0" },
 
  { NULL }
 };
