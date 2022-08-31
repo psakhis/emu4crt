@@ -231,6 +231,10 @@ static const MDFNSetting GlobalVideoSettings[] =
  { "video.resolution_switch", MDFNSF_NOFLAGS, gettext_noop("Video resolution switch (0, native, super or switchres)."), NULL, MDFNST_ENUM, "0", NULL, NULL, NULL, NULL, Resolution_Switch},
  // SLK - end
 
+ // Psakhis - experimentntal BFI
+ // { "video.bfi", MDFNSF_NOFLAGS, gettext_noop("Experimental BFI."), gettext_noop("0, 1, 2"), MDFNST_INT, "0", "0", "2" },
+ // Psakhis - end
+
  { NULL }
 };
 
@@ -832,12 +836,19 @@ static void Video_WinSetVideoMode(int iWidth, int iHeight)
 //SLK + psakhis
 void Video_SetSwitchres(int w,int h,double vfreq)
 {
- printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f \n",w,h,vfreq); 
+ printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,rotated);   
  sr_mode swres_result;
  unsigned char interlace = 0;	       
  if (h > 288) 
   interlace = 1;
-    
+ 
+ /*
+ if (rotated ==  MDFN_ROTATE90 || rotated == MDFN_ROTATE270)
+  sr_set_rotation(1);
+ else
+  sr_set_rotation(0);
+ */
+ 
  //retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result); //only applied on win32 at first sdl change  
  retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
  printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);		
@@ -881,14 +892,20 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
   if(video_settings.fullscreen == 0)
   {
     printf("  VIDEO - Video_ChangeResolution - Video mode: WINDOWED\n");
-
-    SDL_SetWindowSize(window, w, h);    
-
+    current_game_resolution_w = w;
+    current_game_resolution_h = h;
+    MarkNeedBBClear();    
+    /*
+    if(rotated == MDFN_ROTATE90 || rotated == MDFN_ROTATE270) //ST-V 
+      SDL_SetWindowSize(window, h, w);      
+    else
+      SDL_SetWindowSize(window, w, h);    
+      
     int x, y;
     SDL_GetWindowPosition(window, &x, &y);
     SDL_PumpEvents();
     SDL_SetWindowPosition(window, x, y);
-
+    */
     sr_x_scale = 1;
     sr_y_scale = 1;    
   }
@@ -1046,6 +1063,7 @@ void Video_Sync(MDFNGI *gi)
 
  VideoGI = gi;
  rotated = gi->rotated;
+ 
  //
  #ifdef WIN32
  if(MDFN_GetSettingB("video.disable_composition"))
@@ -1199,6 +1217,12 @@ void Video_Sync(MDFNGI *gi)
    printf("  VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);         
    video_settings.xres = 0; //sdl get desktop resolution - switch is delegated to switchres
    video_settings.yres = 0; //sdl get desktop resolution - switch is delegated to switchres   
+   
+   /*int bfi = MDFN_GetSettingI("video.bfi"); //experimental no bypass   
+   if (bfi > 0) {
+   	video_settings.xres = resolution_to_change_w;
+   	video_settings.yres = resolution_to_change_h;
+   }*/
   }  
   current_game_resolution_w = resolution_to_change_w; // bypass next changes
   current_game_resolution_h = resolution_to_change_h; // bypass next changes  
@@ -1215,6 +1239,9 @@ void Video_Sync(MDFNGI *gi)
   video_settings.videoip = 0;
   video_settings.shader = SHADER_NONE;
   video_settings.stretch = 0;  
+  
+  rotated = 0; //ST-V Original hard
+  gi->rotated = rotated;
  }
  //
  //
@@ -1461,6 +1488,12 @@ void Video_Sync(MDFNGI *gi)
     trymode.refresh_rate = resolution_to_change_vfreq;
   } 
   //end psakhis
+  
+  /*int bfi = MDFN_GetSettingI("video.bfi"); //experimental no bypass
+  MDFN_printf("video.bfi=%d\n",bfi);
+  if (bfi > 1) {
+  	trymode.refresh_rate = resolution_to_change_vfreq * 2;
+  }*/
  
  if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
   {
@@ -2037,7 +2070,6 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
  //
  //
  MDFN_Rect src_rect;
-
  if(rotated != new_rotated)
  {
   rotated = new_rotated;

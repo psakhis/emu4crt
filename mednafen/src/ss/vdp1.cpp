@@ -1015,7 +1015,7 @@ void SetHBVB(const sscpu_timestamp_t event_timestamp, const bool new_hb_status, 
    if(!(FBCR & FBCR_FCM) || (FBManualPending && !(FBCR & FBCR_FCT)))
    {
     if(TVMR & TVMR_ROTATE)
-     FBVBErasePending = true;
+     FBVBErasePending = true;    
     else
      EraseYCounter = EraseParams.y_start;
    }

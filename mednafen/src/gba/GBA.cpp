@@ -740,6 +740,7 @@ static void Load(GameFile* gf)
    MDFN_printf(_("ROM MD5:   0x%s\n"), md5_context::asciistr(MDFNGameInfo->MD5, 0).c_str());
    
    //psakhis
+   //native_resolution_vcenter = false;
    resolution_to_change_w = 240;	
    resolution_to_change_h = 240;
    resolution_to_change_vfreq = 59.715400;
@@ -3330,7 +3331,7 @@ static const FileExtensionSpecStruct KnownExtensions[] =
  { ".minigsf", -20, gettext_noop("MiniGSF Rip") },
  { ".gba",   0, gettext_noop("GameBoy Advance ROM Image") },
  { ".agb",   0, gettext_noop("GameBoy Advance ROM Image") },
- { ".bin", -80, gettext_noop("GameBoy Advance ROM Image") },
+ { ".bin", -1000, gettext_noop("GameBoy Advance ROM Image") },
  { NULL, 0, NULL }
 };
 

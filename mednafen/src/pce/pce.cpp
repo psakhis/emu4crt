@@ -411,7 +411,7 @@ static MDFN_COLD void LoadCommonPre(void)
  // Initialize sound buffers
  for(unsigned ch = 0; ch < 2; ch++)
   HRBufs[ch] = new OwlBuffer();
-
+ 
  // SLK
  if(MDFN_GetSettingB("pce.arcadecard"))
  {
@@ -613,9 +613,8 @@ static bool TestMagicCD(std::vector<CDInterface*> *CDInterfaces)
  return(ret);
 }
 
-static MDFN_COLD bool DetectSGXCD(std::vector<CDInterface*>* CDInterfaces)
+static MDFN_COLD bool DetectSGXCD(CDInterface* cdiface)
 {
- CDInterface* cdiface = (*CDInterfaces)[0];
  CDUtility::TOC toc;
  uint8 sector_buffer[2048];
  bool ret = false;
@@ -651,11 +650,11 @@ static MDFN_COLD void LoadCD(std::vector<CDInterface*> *CDInterfaces)
    { ".bios", 0, gettext_noop("BIOS Image") },
   };
   IsHES = 0;
-  IsSGX = DetectSGXCD(CDInterfaces);
+  IsSGX = CDInterfaces->size() && DetectSGXCD((*CDInterfaces)[0]);
 
   LoadCommonPre();
 
-  const char *bios_sname = DetectGECD((*CDInterfaces)[0]) ? "pce.gecdbios" : "pce.cdbios";
+  const char *bios_sname = (CDInterfaces->size() && DetectGECD((*CDInterfaces)[0])) ? "pce.gecdbios" : "pce.cdbios";
   std::string bios_path = MDFN_MakeFName(MDFNMKF_FIRMWARE, 0, MDFN_GetSettingS(bios_sname));
   MDFNFILE fp(&NVFS, bios_path, KnownBIOSExtensions, _("CD BIOS"));
 

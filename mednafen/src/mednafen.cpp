@@ -1042,7 +1042,7 @@ static MDFN_COLD const MDFNGI* FindCompatibleModule(const char* force_module, Ga
    }
    else
    {
-    if(!gi->LoadCD || !gi->TestMagicCD)
+    if(!gi->LoadCD || !gi->TestMagicCD || !CDInterfaces.size())
      continue;
 
     if(gi->TestMagicCD(&CDInterfaces))
@@ -1815,7 +1815,7 @@ void MDFN_MidSync(EmulateSpecStruct *espec, const unsigned flags)
  // we'd need to fix the kludgy driver-side code that handles sound buffer underruns.
  //
  if(!MDFNnetplay)
- {
+ { 	
   MDFND_MidSync(espec, flags);
   //
   if((flags & MIDSYNC_FLAG_UPDATE_INPUT) && MDFNGameInfo->TransformInput)	// Call after MDFND_MidSync, and before MDFNMOV_ProcessInput

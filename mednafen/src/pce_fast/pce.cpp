@@ -297,7 +297,7 @@ static void LoadCommonPre(void)
    resolution_to_change = true;
  }
  // SLK
-
+ 
  // FIXME:  Make these globals less global!
  pce_overclocked = MDFN_GetSettingUI("pce_fast.ocmultiplier");
  PCE_ACEnabled = MDFN_GetSettingB("pce_fast.arcadecard");
@@ -458,9 +458,8 @@ static MDFN_COLD bool TestMagicCD(std::vector<CDInterface*> *CDInterfaces)
  return(ret);
 }
 
-static MDFN_COLD bool DetectSGXCD(std::vector<CDInterface*>* CDInterfaces)
+static MDFN_COLD bool DetectSGXCD(CDInterface* cdiface)
 {
- CDInterface* cdiface = (*CDInterfaces)[0];
  CDUtility::TOC toc;
  uint8 sector_buffer[2048];
  bool ret = false;
@@ -492,7 +491,7 @@ static MDFN_COLD void LoadCD(std::vector<CDInterface*> *CDInterfaces)
   std::string bios_path = MDFN_MakeFName(MDFNMKF_FIRMWARE, 0, MDFN_GetSettingS("pce_fast.cdbios"));
 
   IsHES = 0;
-  IsSGX = DetectSGXCD(CDInterfaces);
+  IsSGX = CDInterfaces->size() && DetectSGXCD((*CDInterfaces)[0]);
 
   LoadCommonPre();
 
