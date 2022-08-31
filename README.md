@@ -1,4 +1,4 @@
-# **Mednafen 1.29 - emu4crt - A18**
+# **Mednafen 1.31 - UNSTABLE - emu4crt - A19**
 
 ### Important: 
 This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
@@ -9,7 +9,7 @@ It brings "pixel-perfect" rendering by switching host resolution to match emulat
 
 * Mednafen modules ported to emu4crt: 
   * Sony Playstation (with chd support and sbi files)
-  * Sega Saturn (win64 only) (with chd support)
+  * Sega Saturn / ST-V (win64 only) (with chd support)
   * Nintendo NES/Famicon (snes & snes_faust)
   * Nintendo Super NES/Super Famicom
   * Nintendo Game Boy Advance 
