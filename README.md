@@ -91,6 +91,8 @@ To enable resolution switch, use "video.resolution_switch" parameter in mednafen
 * video.resolution_switch switchres -> to use libswitchres mode (you need to configure switchres.ini properly!!)
 * video.resolution_switch 0 -> to disable resolution switch [DEFAULT MODE]
 
+* video.fs 1 -> fullscreen mode
+
 emu4crt.exe can be placed in an existing mednafen.exe directory, both can share the same configuration file and all ressource files (firmwares, savestates, etc.).
 
 ## Limits and known issues
