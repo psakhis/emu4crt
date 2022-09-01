@@ -21,7 +21,7 @@ It brings "pixel-perfect" rendering by switching host resolution to match emulat
 Many options, meaningless in a CRT screen usage, have been removed from Mednafen in provided emu4crt builds (shaders, etc.).
 
 * Requirements:
-  * OS: Windows 32/64bits
+  * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
 emu4crt can be use in three modes:
