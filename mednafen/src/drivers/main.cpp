@@ -167,6 +167,7 @@ static const MDFNSetting DriverSettings[] =
 
   { "nothrottle", MDFNSF_NOFLAGS, gettext_noop("Disable speed throttling when sound is disabled."), NULL, MDFNST_BOOL, "0"},
   { "autosave", MDFNSF_NOFLAGS, gettext_noop("Automatically load/save state on game load/close."), gettext_noop("Automatically save and load save states when a game is closed or loaded, respectively."), MDFNST_BOOL, "0"},
+  { "autoload", MDFNSF_NOFLAGS, gettext_noop("Automatically load state on game load."), gettext_noop("Automatically load save states when a game is loaded."), MDFNST_BOOL, "0"},
   { "sound.driver", MDFNSF_NOFLAGS, gettext_noop("Select sound driver."), gettext_noop("The following choices are possible, sorted by preference, high to low, when \"default\" driver is used, but dependent on being compiled in."), MDFNST_ENUM, "default", NULL, NULL, NULL, NULL, SDriver_List },
   { "sound.device", MDFNSF_NOFLAGS, gettext_noop("Select sound output device."), gettext_noop("When using ALSA sound output under Linux, the \"sound.device\" setting \"default\" is Mednafen's default, IE \"hw:0\", not ALSA's \"default\". If you want to use ALSA's \"default\", use \"sexyal-literal-default\"."), MDFNST_STRING, "default", NULL, NULL },
   { "sound.volume", MDFNSF_NOFLAGS, gettext_noop("Sound volume level, in percent."), gettext_noop("Setting this volume control higher than the default of \"100\" may severely distort the sound."), MDFNST_UINT, "100", "0", "150" },
@@ -1148,7 +1149,8 @@ static int LoadGame(const char *force_module, const char *path)
 
 	// Load state before network connection.
 	// TODO: Move into core, MDFNI_LoadGame()
-        if(MDFN_GetSettingB("autosave"))
+	// Psakhis -> add autoload
+        if(MDFN_GetSettingB("autosave") || MDFN_GetSettingB("autoload"))
 	{
 	 if(!MDFNI_LoadState(NULL, "mca"))
 	 {
