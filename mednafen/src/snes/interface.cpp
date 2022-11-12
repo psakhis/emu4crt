@@ -75,6 +75,9 @@ static std::vector<uint32> ColorMap;	// [32768]
 int prev_resolution_w;
 int prev_resolution_h;
 // SLK - end
+// PSAKHIS 
+int max_resolution_w;
+// PSAKHIS - end
 
 static void BuildColorMap(MDFN_PixelFormat &format, uint8* CustomColorMap)
 {
@@ -133,6 +136,7 @@ static INLINE uint32 BlendFunc(const uint32 pp, const uint32 p, const uint32 pn)
 
 void bSNES_v059::Interface::video_scanline(uint16_t *data, unsigned line, unsigned width, unsigned height, bool interlaced, bool field)
 {
+	
  const int ppline = PrevLine;
 
  //if(rand() & 1)
@@ -213,6 +217,17 @@ void bSNES_v059::Interface::video_scanline(uint16_t *data, unsigned line, unsign
 
  tlw[(y << interlaced) + field] = width;
  tdr->w = width;
+ 
+ //PSAKHIS
+ if (line <= 1) {
+ 	max_resolution_w = 0; 	
+ }
+ if (width > max_resolution_w)
+ {
+ 	max_resolution_w = width;
+ }	
+ //END PSAKHIS
+ 
  tdr->h = height << interlaced;
 
  es->InterlaceOn = interlaced;
@@ -910,13 +925,15 @@ static void Emulate(EmulateSpecStruct *espec)
  bSNES_v059::ppu.enable_renderer(true);
 
  // SLK - guess SNES active resolution
- //printf("SNES Interface - Emulate - %dx%d - %d,%d\n",tdr->w,tdr->h,tdr->x,tdr->y);
- if(tdr->h > 10 && tdr->w > 10 && tdr->w != prev_resolution_w)
+ //printf("SNES Interface - Emulate - %dx%d - %d,%d, (%d)\n",tdr->w,tdr->h,tdr->x,tdr->y,max_resolution_w);
+ // PSAKHIS
+ // replace tdr->w from line to w frame 
+ if(tdr->h > 10 && max_resolution_w > 10 && max_resolution_w != prev_resolution_w)
  {
-   resolution_to_change = true;
-   resolution_to_change_w = tdr->w;
+   resolution_to_change = true; 
+   resolution_to_change_w = max_resolution_w;
  }
- if(tdr->h > 10 && tdr->w > 10 && tdr->h != prev_resolution_h)
+ if(tdr->h > 10 && max_resolution_w > 10 && tdr->h != prev_resolution_h)
  {
    resolution_to_change = true;
    if(tdr->h <= 400)

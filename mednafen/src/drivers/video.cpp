@@ -918,10 +918,11 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     	int sr_x_scale_before_switch = sr_x_scale;
     	int xres_before_switch = video_settings.xres;   
     	Video_SetSwitchres(w,h,vfreq);    	
+    	
     	if (video_settings.xres == xres_before_switch && h == current_game_resolution_h) { //no switch requiered
     		current_game_resolution_w = w;
     	 	printf("  VIDEO - Video_ChangeResolution - Switchres resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);
-    	 	MarkNeedBBClear();
+    	 	MarkNeedBBClear();    	 	
     	 	return (sr_x_scale_before_switch != sr_x_scale);    	  	
     	}  
     	current_game_resolution_w = w;
@@ -1003,7 +1004,7 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     default: SMDRect.y = video_settings.yres - SMDRect.h - 64;
   }
   SMDRect.w = video_settings.xres; // OSD rect w
-                
+           
   return 1;    
  
 }
@@ -2288,11 +2289,15 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
     }
     else
     {
-    // printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x);
+     //printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x);      
      sub_dest_rect.x = screen_dest_rect.x;
      sub_dest_rect.w = screen_dest_rect.w;
      sub_dest_rect.y = screen_dest_rect.y + (last_y - src_rect.y) * screen_dest_rect.h / src_rect.h;
      sub_dest_rect.h = sub_src_rect.h * screen_dest_rect.h / src_rect.h;
+     
+     //printf("      Output - PSAKHIS sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);
+     //printf("      Output - PSAKHIS sub_dest_rect:   %dx%d %d,%d\n",sub_dest_rect.w,sub_dest_rect.h,sub_dest_rect.x,sub_dest_rect.y);
+     //printf("      Output - PSAKHIS sub_screen_rect: %dx%d %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
     }
 
     if(!sub_dest_rect.h) // May occur with small yscale values in certain cases, so prevent triggering an assert()

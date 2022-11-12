@@ -1029,13 +1029,13 @@ static uint32 PPU_Update(uint32 timestamp)
     if(!SkipFrame)
      PPU_MTRENDER::MTIF_ResetLineTarget(PAL, InterlaceOnSample, (bool)(Status[1] & 0x80));
    }
-
+   
    if(MDFN_LIKELY(!VBlank))
-   {
+   {    
     if(scanline > 0 && scanline < 240 && !SkipFrame)
     {
      PPU_MTRENDER::MTIF_RenderLine(scanline);
-    }
+    }    
    }
 
    LineCounter += 534 - RenderLineDelay;
@@ -1387,7 +1387,7 @@ void PPU_StartFrame(EmulateSpecStruct* espec)
  es->DisplayRect.h = SLDRH;
  //
  //
- PPU_MTRENDER::MTIF_StartFrame(espec, HFilter);
+ PPU_MTRENDER::MTIF_StartFrame(espec, HFilter); 
  //
  INPUT_UpdatePhysicalState();
 }

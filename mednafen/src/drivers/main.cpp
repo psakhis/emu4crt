@@ -1404,11 +1404,11 @@ static int GameLoop(void *arg)
 	 else
           MDFNI_Emulate(&espec);
           
-	 //psakhis: activate change on switch thread 
-	 if (resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
-	  NeedResolutionChange++; //redundant 
+	 //psakhis: activate change on switch thread 	 
+	 if (!NeedResolutionChange && resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
+	  NeedResolutionChange++; //redundant only if not changing 
 	  MThreading::Sem_Post(STWakeupSem);	
-	  resolution_to_change = false;
+	  resolution_to_change = false;	  	  
 	 }
 	 //psakhis end	 
 	 	 	 
@@ -1500,13 +1500,13 @@ static int SwitchLoop(void *arg)
 	  {     
 	    if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h)) {  
 	      printf("SWITCH - Activated - Current resolution %dx%d - Changing to %dx%d@%f\n",current_game_resolution_w,current_game_resolution_h,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
-	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);	    	    	      
+	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);	    	    	      	      
 	    } 
 	    else {
-	      printf("SWITCH - Activated - Bypassed from %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           			      	      
+	      //printf("SWITCH - Activated - Bypassed from %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           			      	      
 	      NeedResolutionChange--;	    	      
-	    }
-	  }                                     
+	    }	   	     	    
+	  }	                                     
 	 }                                      	                                                                                                         		
 	} 	 	                 	 	        							 		 	                                                                                                                                                                                	 	 
 	
@@ -2451,13 +2451,13 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	    //
 	    NeedVideoSync = 0;
            }
-	   // SLK + psakhis                                                                                                        
+	   // SLK + psakhis     		   
 	   if(MDFN_LIKELY(NeedResolutionChange) && MDFN_LIKELY(NeedResolutionRefresh))
 	   {                                                                                                              
 	    printf("MAIN - VIDEO - Refresh blitter after a resolution change\n");                                                     
 	    Video_BlitRefresh();              
 	    NeedResolutionChange--;
-	    NeedResolutionRefresh--;
+	    NeedResolutionRefresh--;	   
 	   }                                                                                                              
 	   // SLK + psakhis END  
 	   

@@ -152,6 +152,10 @@ static uint8 prev_VRes = 0;
 static bool  prev_BorderMode = 0;
 // SLK end
 
+//PSAKHIS
+static bool prob_false_change = false; //reduce false positive changes
+// PSAKHIS end
+
 //
 static struct
 {
@@ -562,7 +566,19 @@ static INLINE void RegsWrite(uint32 A, uint16 V)
 	VRes = (V >> 4) & 0x3;
 	HRes = (V >> 0) & 0x7;
 	// SLK
-	if(InterlaceMode != prev_InterlaceMode || HRes != prev_HRes)
+	//PSAKHIS	
+	if(InterlaceMode == prev_InterlaceMode && (HRes < prev_HRes && !prob_false_change)) 
+	{	  
+	    printf("VDP2 Render - Television mode changed?: %d\n",V);
+            prob_false_change = true;			
+	} 
+	else 
+	{	    
+	    prob_false_change = false;	
+	}
+	//END PSAKHIS
+	//if(InterlaceMode != prev_InterlaceMode || HRes != prev_HRes)
+	if(InterlaceMode != prev_InterlaceMode || (HRes != prev_HRes && !prob_false_change)) //psakhis: only change if a valid hres for more than 1
 	{
 	  printf("VDP2 Render - Television mode changed: %d\n",V);
 	  printf("     BorderMode: %d\n",BorderMode);
@@ -573,7 +589,8 @@ static INLINE void RegsWrite(uint32 A, uint16 V)
 	  prev_BorderMode = BorderMode;
 	  prev_InterlaceMode = InterlaceMode;
 	  prev_VRes = VRes;
-	  prev_HRes = HRes;
+	  prev_HRes = HRes;	  
+	  prob_false_change = false; //Psakhis reduce false positives
 	  // HRES
 	  switch(HRes){
 	    case 0:
