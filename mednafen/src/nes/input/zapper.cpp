@@ -110,7 +110,8 @@ static uint8 ReadZapper(int w)
 
 static void DrawZapper(int w, uint8* pix, int pix_y)
 {
- NESCURSOR_DrawGunSight(w, pix, pix_y, ZD[w].mzx, ZD[w].mzy);
+ if (!MDFN_GetSettingB("nes.gun_crosshair"))	//psakhis
+ 	NESCURSOR_DrawGunSight(w, pix, pix_y, ZD[w].mzx, ZD[w].mzy);
 }
 
 static void UpdateZapper(int w, void *data)

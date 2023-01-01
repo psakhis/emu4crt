@@ -455,6 +455,9 @@ static const MDFNSetting_EnumList NTSCPresetList[] =
 
 static const MDFNSetting NESSettings[] =
 {
+  //psakhis	 
+  { "nes.gun_crosshair", MDFNSF_NOFLAGS, gettext_noop("Disable crosshair for zapper"), NULL, MDFNST_BOOL, "0" },
+  //end psakhis
   { "nes.nofs", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable four-score emulation."), NULL, MDFNST_BOOL, "0" },
 
   { "nes.no8lim", MDFNSF_NOFLAGS, gettext_noop("Remove 8-sprites-per-scanline hardware limit."), 
