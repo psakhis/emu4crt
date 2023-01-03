@@ -17,6 +17,8 @@ enum ShaderType
         SHADER_IPYNOTXSHARPER,
 
 	SHADER_GOAT,
+	
+	SHADER_GUNLIGHT //PSAKHIS
 };
 
 struct ShaderParams
@@ -34,6 +36,13 @@ struct ShaderParams
 	unsigned goat_pat;
 	bool goat_slen;
 	bool goat_fprog;
+
+	//PATCH BRIGHT	
+	float gunlight_brightness;
+	unsigned int gunlight_flash_length;	
+	//float postprocess_contrast;
+	//float postprocess_saturation;
+	//END PATCH
 };
 
 class OpenGL_Blitter;

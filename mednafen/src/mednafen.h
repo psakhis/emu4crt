@@ -47,6 +47,10 @@ extern double resolution_to_change_vfreq;
 extern int current_game_resolution_w; 
 extern int current_game_resolution_h;
 
+// gunlight
+extern bool gunlight_apply;
+extern unsigned int gunlight_frames;
+
 // SLK end
 
 namespace Mednafen

@@ -311,6 +311,9 @@ static const MDFNSetting_EnumList Shader_List[] =
     { "ipynotxsharper", SHADER_IPYNOTXSHARPER, 	gettext_noop("Sharper version of \"ipynotx\".") },
 
     { "goat", 		SHADER_GOAT, 		gettext_noop("Simple approximation of a color TV CRT look."), gettext_noop("Intended for fullscreen modes with a vertical resolution of around 1000 to 1500 pixels.  Doesn't simulate halation and electron beam energy distribution nuances.") },
+    
+    //PSAKHIS
+    { "gunlight", 	SHADER_GUNLIGHT, 	gettext_noop("Apply brightness post processing for gun games on TV CRT.") },
 
     { NULL, 0 },
 };
@@ -422,6 +425,12 @@ void Video_MakeSettings(void)
   AddSystemSetting(sysname, "shader.goat.tp", gettext_noop("Transparency of otherwise-opaque mask areas."), nullptr, MDFNST_FLOAT, "0.50", "0.00", "1.00");
   AddSystemSetting(sysname, "shader.goat.fprog", gettext_noop("Force interlaced video to be treated as progressive."), gettext_noop("When disabled, the default, the \"video.deinterlacer\" setting is effectively ignored with respect to what appears on the screen, unless it's set to \"blend\" or \"blend_rg\".  When enabled, it may be prudent to disable the scanlines effect controlled by the *.goat.slen setting, or else the scanline effect may look objectionable."), MDFNST_BOOL, "0");
   AddSystemSetting(sysname, "shader.goat.slen", gettext_noop("Enable scanlines effect."), nullptr, MDFNST_BOOL, "1");
+  //PATCH BRIGHTNESS
+  AddSystemSetting(sysname, "shader.gunlight.brightness", gettext_noop("Brightness gain."), nullptr, MDFNST_FLOAT, "0.50", "-1.00", "1.00");
+ // AddSystemSetting(sysname, "shader.postprocess.contrast", gettext_noop("Contrast adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
+ // AddSystemSetting(sysname, "shader.postprocess.saturation", gettext_noop("Saturation adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
+  AddSystemSetting(sysname, "shader.gunlight.flash_length", gettext_noop("Frames to apply brightness after trigger."), nullptr, MDFNST_UINT, "5", "0", "10");
+  //END PATCH
  }
 
  MDFNI_MergeSettings(GlobalVideoSettings);
@@ -487,6 +496,7 @@ static SDL_Window* window = NULL;
 static SDL_GLContext glcontext = NULL;
 static SDL_Surface *screen = NULL;
 static OpenGL_Blitter *ogl_blitter = NULL;
+static OpenGL_Blitter *ogl_blitter_gunlight = NULL; //psakhis
 static SDL_Surface *IconSurface=NULL;
 
 static int32 screen_w, screen_h;
@@ -540,6 +550,12 @@ static void SyncCleanup(void)
  {
   delete ogl_blitter;
   ogl_blitter = nullptr;
+ }
+ 
+ if(ogl_blitter_gunlight) //PSAKHIS
+ {
+  delete ogl_blitter_gunlight;
+  ogl_blitter_gunlight = nullptr;
  }
 
  if(glcontext)
@@ -1042,12 +1058,15 @@ void Video_BlitRefresh()
          if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) < 0)
           MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting switchres to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());                      
    } */     
-   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);           
+   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);               
   #endif
   
   if (ogl_blitter)   
    ogl_blitter->SetViewport(screen_w, screen_h);
  
+  if (ogl_blitter_gunlight)   //PSAKHIS
+   ogl_blitter_gunlight->SetViewport(screen_w, screen_h);
+    
   printf("  VIDEO - Video_BlitRefresh completed\n");
 }
 
@@ -1140,6 +1159,13 @@ void Video_Sync(MDFNGI *gi)
  video_settings.shader_params.goat_tp = MDFN_GetSettingF(snp + "shader.goat.tp");
  video_settings.shader_params.goat_slen = MDFN_GetSettingB(snp + "shader.goat.slen");
  video_settings.shader_params.goat_fprog = MDFN_GetSettingB(snp + "shader.goat.fprog");
+ //PATCH BRIGHTNESS
+ video_settings.shader_params.gunlight_brightness = MDFN_GetSettingF(snp + "shader.gunlight.brightness");
+ video_settings.shader_params.gunlight_flash_length = MDFN_GetSettingUI(snp + "shader.gunlight.flash_length");
+ 
+ //video_settings.shader_params.postprocess_contrast = MDFN_GetSettingF(snp + "shader.postprocess.contrast");
+ //video_settings.shader_params.postprocess_saturation = MDFN_GetSettingF(snp + "shader.postprocess.saturation");
+ //END PATCH
  //
 
  video_settings.fullscreen = MDFN_GetSettingB("video.fs");
@@ -1238,7 +1264,7 @@ void Video_Sync(MDFNGI *gi)
   video_settings.xscalefs = 1;
   video_settings.yscalefs = 1;
   video_settings.videoip = 0;
-  video_settings.shader = SHADER_NONE;
+  //video_settings.shader = SHADER_NONE;  
   video_settings.stretch = 0;  
   
   rotated = 0; //ST-V Original hard
@@ -1267,7 +1293,6 @@ void Video_Sync(MDFNGI *gi)
  if(screen_dest_rect.w > 16383 || screen_dest_rect.h > 16383)
   throw MDFN_Error(0, _("Window size(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
 
-
  SDL_SetWindowFullscreen(window, 0);  
  SDL_PumpEvents();
  SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h); 
@@ -1278,7 +1303,7 @@ void Video_Sync(MDFNGI *gi)
  SDL_SetWindowTitle(window, (gi && gi->name.size()) ? gi->name.c_str() : "Mednafen");
  SDL_PumpEvents();
  SDL_ShowWindow(window);
- SDL_PumpEvents();
+ SDL_PumpEvents(); 
 
  //
  if(0)
@@ -1633,6 +1658,13 @@ void Video_Sync(MDFNGI *gi)
    if(CurrentScaler && (CurrentScaler->id == NTVB_HQ2X || CurrentScaler->id == NTVB_HQ3X || CurrentScaler->id == NTVB_HQ4X))
     preferred_format = EVFSUPPORT_NONE;
 
+   if (video_settings.shader == SHADER_GUNLIGHT) //PSAKHIS
+   {   	
+   	MDFN_printf(_("Applying GUNLIGHT SHADER...\n"));
+   	ogl_blitter_gunlight = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
+   	ogl_blitter_gunlight->SetViewport(screen_w, screen_h);           
+   	video_settings.shader = SHADER_NONE;
+   }	//END PSAKHIS
    ogl_blitter = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
    ogl_blitter->SetViewport(screen_w, screen_h);           
    
@@ -1720,10 +1752,14 @@ void Video_Sync(MDFNGI *gi)
   for(int i = 0; i < 2; i++)
   {
    ogl_blitter->ClearBackBuffer();
+   if (ogl_blitter_gunlight) //PSAKHIS
+   	ogl_blitter_gunlight->ClearBackBuffer();
    SDL_GL_SwapWindow(window);
    //ogl_blitter->HardSync();
   }
   ogl_blitter->ClearBackBuffer();
+  if (ogl_blitter_gunlight) //PSAKHIS
+   	ogl_blitter_gunlight->ClearBackBuffer();
  }
  else
  {
@@ -1959,7 +1995,7 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
  assert(dest_rect.h > 0);
 
    if(CurrentScaler)
-   {
+   {   	   	
     MDFN_Rect boohoo_rect({0, 0, eff_src_rect.w * CurrentScaler->xscale, eff_src_rect.h * CurrentScaler->yscale});
     MDFN_Surface bah_surface(NULL, boohoo_rect.w, boohoo_rect.h, boohoo_rect.w, eff_source_surface->format, false);
     const uint32 bypp = eff_source_surface->format.opp;
@@ -2034,7 +2070,12 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
    else // No special scaler:
    {
     if(ogl_blitter)
-     ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
+    { 
+     if (ogl_blitter_gunlight && gunlight_apply) //PSAKHIS
+     	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
+     else	
+     	ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     
+    } 
     else
     {
      SDL_to_MDFN_Surface_Wrapper m_surface(screen);
@@ -2148,7 +2189,11 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
   }
 
   if(vdriver == VDRIVER_OPENGL)
+  {
    ogl_blitter->ClearBackBuffer();
+   if (ogl_blitter_gunlight) //PSAKHIS
+   	ogl_blitter_gunlight->ClearBackBuffer();
+  } 
   else
   {
    SDL_FillRect(screen, NULL, 0);

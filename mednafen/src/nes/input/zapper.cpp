@@ -19,6 +19,7 @@
  */
 
 #include        "share.h"
+#include <mednafen/mednafen.h>   // PSAKHIS TODO: should do better than this!
 
 namespace MDFN_IEN_NES
 {
@@ -26,9 +27,10 @@ namespace MDFN_IEN_NES
 typedef struct {
         uint32 mzx,mzy;
 	uint8 mzb;
-        int bogo;
+        int bogo;        
 	uint64 zaphit;
 	uint8 zaplatch;
+	int gunlight_frames; //psakhis
 } ZAPPER;
 
 static ZAPPER ZD[2];
@@ -61,13 +63,14 @@ static void ZapperFrapper(int w, uint8 *bg, uint32 linets, int final)
      if(sum>=100*3)
      {
       ZD[w].zaphit = timestampbase + timestamp;
-//      printf("Hit: %d %d %ld\n", scanline, timestamp, timestampbase + timestamp);
+     // printf("Hit: %d %d %ld\n", scanline, timestamp, timestampbase + timestamp);
       goto endo;
      }
     }
    xs++;
   }
  }
+ 
  endo:;
 }
 
@@ -105,6 +108,7 @@ static uint8 ReadZapper(int w)
                  ret|=0x10;
                 if(CheckColor(w))
                  ret|=0x8;
+                                 	 
                 return ret;
 }
 
@@ -123,15 +127,32 @@ static void UpdateZapper(int w, void *data)
 
  if(ZD[w].bogo)
   ZD[w].bogo--;
+ 
+ if(ZD[w].gunlight_frames) //psakhis
+  ZD[w].gunlight_frames--;
+  
+ if((new_b&3) && (!(ZD[w].mzb&3))) 
+ {
+  ZD[w].bogo=5; 
+  ZD[w].gunlight_frames = gunlight_frames; //psakhis gunlight
+ } 
+  	
+ if((new_b&3) && MDFN_GetSettingB("nes.gun_clone")) //psakhis -> like the Tomee Zapp Gun, no 100ms wait for pull (simple switch)
+ {
+  ZD[w].bogo=1;  
+ }  
 
- if((new_b&3) && (!(ZD[w].mzb&3)))
-  ZD[w].bogo=5;
+ if (ZD[w].gunlight_frames)  
+ 	gunlight_apply = true; 
+ else
+ 	gunlight_apply = false;
+
 
  ZD[w].mzx = new_x;
  ZD[w].mzy = new_y;
  ZD[w].mzb = new_b;
 
- //printf("La: %08x %08x %08x\n", new_x, new_y, new_b);
+ //printf("La: %08x %08x %08x %08x\n", new_x, new_y, new_b, ZD[w].bogo);
 }
 
 static void StateAction(int w, StateMem *sm, const unsigned load, const bool data_only)
@@ -166,6 +187,7 @@ INPUTC *MDFN_InitZapper(int w)
    return(&ZAPVSC);
   else
    return(&ZAPC);
+   
 }
 
 }

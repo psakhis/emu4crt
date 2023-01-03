@@ -106,6 +106,51 @@ static std::string MakeProgIpolate(unsigned ipolate_axis)	// X & 1, Y & 2, sharp
 #include "shader_scale2x.inc"
 #include "shader_sabr.inc"
 
+//PATCH BRIGHTNESS
+static std::string PostProcess(const std::string& frag_prog, const float brightness, const float contrast, const float saturation)
+{
+
+ /* TODO:
+  * Convert from RGB to HLS, adjust, convert back
+  */
+
+ std::string ret;
+
+ /* Inject postprocessing functions */
+ ret += "vec3 brightness(vec3 inColor, float adjustment) {\n";
+ ret += "vec3 outColor = vec3(inColor + adjustment);\n";
+ ret += "return clamp(outColor, -1.0, 1.0);\n";
+ ret += "}\n";
+
+ ret += "vec3 saturation(vec3 inColor, float adjustment) {\n";
+ ret += "const vec3 W = vec3(0.2125, 0.7154, 0.0721);\n";
+ ret += "vec3 intensity = vec3(dot(inColor, W));\n";
+ ret += "return mix(intensity, inColor, adjustment);\n";
+ ret += "}\n";
+
+ ret += "vec3 contrast(vec3 inColor, float adjustment) {\n";
+ ret += "vec3 outColor = vec3(((inColor.rgb-vec3(0.5))*adjustment)+vec3(0.5));\n";
+ ret += "return clamp(outColor, 0.0, 1.0);\n";
+ ret += "}\n";
+
+ /* Append original shader source up to final "}" */
+ std::size_t end = frag_prog.find_last_of("}");
+ ret += frag_prog.substr(0, end);
+
+ /* Postprocess */
+ ret += "vec3 inColor = vec3(gl_FragColor.rgb);\n";
+
+ ret += "inColor = brightness(inColor, " + std::to_string(brightness) + ");\n";
+ ret += "inColor = saturation(inColor, " + std::to_string(saturation) + ");\n";
+ ret += "inColor = contrast(inColor, "   + std::to_string(contrast)   + ");\n";
+
+ ret += "gl_FragColor = vec4(inColor, float(0));\n";
+ ret += "}\n";
+
+ return ret;
+}
+//END PATCH
+
 static std::string BuildGoat(const bool slen)
 {
  std::string ret;
@@ -186,7 +231,15 @@ void OpenGL_Blitter_Shader::SLP(GLhandleARB moe)
 void OpenGL_Blitter_Shader::CompileShader(CompiledShader &s, const char *vertex_prog, const char *frag_prog)
 {
 	 int opi;
-
+	 
+	 //PATCH BRIGHTNESS	 	 
+	 float postprocess_contrast = 1.00;
+	 float postprocess_saturation = 1.00;
+	 gunlight_frames = params.gunlight_flash_length;
+	 std::string frag_prog_processed = PostProcess(frag_prog, params.gunlight_brightness, postprocess_contrast, postprocess_saturation).c_str();
+	 const char *frag_prog_processed_p = frag_prog_processed.c_str();	 	
+         //END PATCH
+         
          oblt->p_glEnable(GL_FRAGMENT_PROGRAM_ARB);
 
          MDFN_GL_TRY(s.v = oblt->p_glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB));
@@ -196,7 +249,9 @@ void OpenGL_Blitter_Shader::CompileShader(CompiledShader &s, const char *vertex_
 	 s.f_valid = true;
 
          MDFN_GL_TRY(oblt->p_glShaderSourceARB(s.v, 1, &vertex_prog, NULL), SLP(s.v));
-         MDFN_GL_TRY(oblt->p_glShaderSourceARB(s.f, 1, &frag_prog, NULL), SLP(s.f));
+         //MDFN_GL_TRY(oblt->p_glShaderSourceARB(s.f, 1, &frag_prog, NULL), SLP(s.f));
+         //PATCH BRIGHT
+         MDFN_GL_TRY(oblt->p_glShaderSourceARB(s.f, 1, &frag_prog_processed_p, NULL), SLP(s.f));
 
          MDFN_GL_TRY(oblt->p_glCompileShaderARB(s.v), SLP(s.v));
 	 MDFN_GL_TRY(oblt->p_glGetObjectParameterivARB(s.v, GL_OBJECT_COMPILE_STATUS_ARB, &opi));
@@ -252,7 +307,7 @@ void OpenGL_Blitter_Shader::Cleanup(void)
 OpenGL_Blitter_Shader::OpenGL_Blitter_Shader(OpenGL_Blitter *in_oblt, ShaderType shader_type, const ShaderParams& in_params) : oblt(in_oblt), params(in_params)
 {
 	OurType = shader_type;
-
+	
 	memset(&CSP, 0, sizeof(CSP));
 
 	try

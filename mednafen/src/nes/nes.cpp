@@ -457,6 +457,7 @@ static const MDFNSetting NESSettings[] =
 {
   //psakhis	 
   { "nes.gun_crosshair", MDFNSF_NOFLAGS, gettext_noop("Disable crosshair for zapper"), NULL, MDFNST_BOOL, "0" },
+  { "nes.gun_clone", MDFNSF_NOFLAGS, gettext_noop("Like Tomee Zapp Gun, no 100ms wait for pull (simple switch)"), NULL, MDFNST_BOOL, "1" },
   //end psakhis
   { "nes.nofs", MDFNSF_EMU_STATE | MDFNSF_UNTRUSTED_SAFE, gettext_noop("Disable four-score emulation."), NULL, MDFNST_BOOL, "0" },
 
