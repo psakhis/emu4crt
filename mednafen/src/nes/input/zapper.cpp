@@ -30,7 +30,7 @@ typedef struct {
         int bogo;        
 	uint64 zaphit;
 	uint8 zaplatch;
-	int gunlight_frames; //psakhis
+	int gunlight_frames; //psakhis		
 } ZAPPER;
 
 static ZAPPER ZD[2];
@@ -128,31 +128,39 @@ static void UpdateZapper(int w, void *data)
  if(ZD[w].bogo)
   ZD[w].bogo--;
  
- if(ZD[w].gunlight_frames) //psakhis
-  ZD[w].gunlight_frames--;
-  
- if((new_b&3) && (!(ZD[w].mzb&3))) 
- {
-  ZD[w].bogo=5; 
-  ZD[w].gunlight_frames = gunlight_frames; //psakhis gunlight
- } 
-  	
- if((new_b&3) && MDFN_GetSettingB("nes.gun_clone")) //psakhis -> like the Tomee Zapp Gun, no 100ms wait for pull (simple switch)
- {
-  ZD[w].bogo=1;  
- }  
-
- if (ZD[w].gunlight_frames)  
- 	gunlight_apply = true; 
+ //PSAKHIS   
+ //https://www.nesdev.org/wiki/Zapper
+ //Like the Tomee Zapp Gun, no 100ms wait for pull (simple switch)
+ //This works with most existing zapper games which usually fire on a transition from 1 to 0. 
+ if (MDFN_GetSettingB("nes.gun_clone")) 
+ { 	 	  	 
+  	if(new_b&3) //  simpler switch that returns 1 while the trigger is not pulled, and 0 when it is pulled		  
+  	 ZD[w].bogo = 0;  	   	
+  	else
+  	 ZD[w].bogo = 1;   	 	  	  		
+ }  // END PSAKHIS	
  else
- 	gunlight_apply = false;
+  if((new_b&3) && (!(ZD[w].mzb&3))) 
+   ZD[w].bogo=5; 		
+   
+ //PSAKHIS  
+  if(ZD[w].gunlight_frames) 
+  ZD[w].gunlight_frames--;
 
+  if((!(ZD[w].bogo)) && (!(ZD[w].mzb&3))) 
+   ZD[w].gunlight_frames = gunlight_frames; //psakhis gunlight  		
+  
+  if(ZD[w].gunlight_frames)  
+   gunlight_apply = true; 
+  else
+   gunlight_apply = false;
+//END PSAKHIS  
 
  ZD[w].mzx = new_x;
  ZD[w].mzy = new_y;
  ZD[w].mzb = new_b;
-
- //printf("La: %08x %08x %08x %08x\n", new_x, new_y, new_b, ZD[w].bogo);
+ 
+ //printf("La: %08x %08x %08x %08x %08x\n", new_x, new_y, new_b, ZD[w].bogo, ZD[w].gunlight_frames);
 }
 
 static void StateAction(int w, StateMem *sm, const unsigned load, const bool data_only)
