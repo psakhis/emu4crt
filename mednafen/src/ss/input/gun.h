@@ -47,8 +47,11 @@ class IODevice_Gun final : public IODevice
 
  void UpdateLight(const sscpu_timestamp_t timestamp);
 
- uint8 state;
-
+ uint8 state; 
+ uint8 prev_state; //psakhis 
+ int32 osshot_counter_gunlight; //psakhis
+ int _gunlight_frames; //psakhis
+ 
  int32 osshot_counter;
  bool prev_ossb;
 

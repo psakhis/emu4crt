@@ -21,6 +21,7 @@
 
 #include "common.h"
 #include "gun.h"
+#include <mednafen/mednafen.h>   // PSAKHIS TODO: should do better than this!
 
 namespace MDFN_IEN_SS
 {
@@ -116,10 +117,15 @@ void IODevice_Gun::Power(void)
  prev_ossb = false;
  //
  state |= 0x40;
+ //
+ prev_state = state; //psakhis
+ osshot_counter_gunlight = -1; //psakhis
+ _gunlight_frames = 0; //psakhis
 }
 
 void IODevice_Gun::TransformInput(uint8* const data, float gun_x_scale, float gun_x_offs) const
 {
+ 
  int32 tmp = (int16)MDFN_de16lsb(&data[0]);
 
  tmp = floor(0.5 + tmp * gun_x_scale + gun_x_offs);
@@ -143,24 +149,24 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  //
  //
  //
- const bool cur_ossb = (bool)(data[4] & 0x4);
+ const bool cur_ossb = (bool)(data[4] & 0x4); 
 
  if(osshot_counter >= 0)
- {
+ {  
   const int32 osshot_total = 250000;
 
-  osshot_counter += time_elapsed;
-  if(osshot_counter >= osshot_total)
+  osshot_counter += time_elapsed;  
+  if(osshot_counter >= osshot_total) 
    osshot_counter = -1;
   else
   {
    nom_coord[0] = -16384;
    nom_coord[1] = -16384;
 
-   if(osshot_counter >= osshot_total * 2 / 3)
+   if(osshot_counter >= osshot_total * 2 / 3) 
     state |= 0x10;
-   else if(osshot_counter >= osshot_total * 1 / 3)
-    state &= ~0x10;
+   else if(osshot_counter >= osshot_total * 1 / 3) 
+    state &= ~0x10;    
    else
     state |= 0x10;
   }
@@ -168,6 +174,37 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  else if((prev_ossb ^ cur_ossb) & cur_ossb)
   osshot_counter = 0;
 
+ //PSAKHIS  
+ if(_gunlight_frames) 
+  _gunlight_frames--;
+  
+ if (state == 0x6c) //trigger
+ {
+   if (state != prev_state && osshot_counter == -1)  //trigger non offset button simulated
+    _gunlight_frames = gunlight_frames; 	
+    
+   const int32 osshot_total_gunlight = 250000;	
+   osshot_counter_gunlight += time_elapsed;
+   if(nom_coord[0] || nom_coord[1])   
+    osshot_counter_gunlight = -1; 	            //apply trigger if coords readed
+   else 
+   {
+    state = prev_state; 
+    if(osshot_counter_gunlight >= osshot_total_gunlight * 1 / 3) //apply offset only if non false negative
+     osshot_counter = 0;	
+   }
+ }
+ else
+  osshot_counter_gunlight = -1;
+ 
+ if(_gunlight_frames)  
+  gunlight_apply = true; 
+ else
+  gunlight_apply = false;
+     	     
+ prev_state = state;  
+ // END PSAKHIS 
+ 
  prev_ossb = cur_ossb;
 }
 

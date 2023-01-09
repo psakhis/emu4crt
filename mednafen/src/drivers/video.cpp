@@ -429,7 +429,7 @@ void Video_MakeSettings(void)
   AddSystemSetting(sysname, "shader.gunlight.brightness", gettext_noop("Brightness gain."), nullptr, MDFNST_FLOAT, "0.50", "-1.00", "1.00");
  // AddSystemSetting(sysname, "shader.postprocess.contrast", gettext_noop("Contrast adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
  // AddSystemSetting(sysname, "shader.postprocess.saturation", gettext_noop("Saturation adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
-  AddSystemSetting(sysname, "shader.gunlight.flash_length", gettext_noop("Frames to apply brightness after trigger."), nullptr, MDFNST_UINT, "5", "0", "10");
+  AddSystemSetting(sysname, "shader.gunlight.flash_length", gettext_noop("Input length to apply brightness."), nullptr, MDFNST_UINT, "5", "0", "20");
   //END PATCH
  }
 
@@ -1660,7 +1660,7 @@ void Video_Sync(MDFNGI *gi)
 
    if (video_settings.shader == SHADER_GUNLIGHT) //PSAKHIS
    {   	
-   	MDFN_printf(_("Applying GUNLIGHT SHADER...\n"));
+   	MDFN_printf(_("Applying GUNLIGHT SHADER...\n"));     	
    	ogl_blitter_gunlight = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
    	ogl_blitter_gunlight->SetViewport(screen_w, screen_h);           
    	video_settings.shader = SHADER_NONE;
@@ -2071,10 +2071,12 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
    {
     if(ogl_blitter)
     { 
-     if (ogl_blitter_gunlight && gunlight_apply) //PSAKHIS
-     	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
-     else	
-     	ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     
+     //PSAKHIS    		                       
+     if ((ogl_blitter_gunlight) && (gunlight_apply))      
+     	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     	     	 	       	     	      	        	     	     	        	     		     	
+     // END PSAKHIS
+     else         
+      ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);          	     
     } 
     else
     {
