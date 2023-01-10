@@ -27,6 +27,11 @@ Many options, meaningless in a CRT screen usage, have been removed from Mednafen
   * nes.input.zapper.clone -> works better for guncon2 (see https://www.nesdev.org/wiki/Zapper)
   * nes.input.zapper.crosshair -> 1 for disable it
 
+In general, nes core Mednafen auto detect zapper with crc rom header, in other cores set input port, for example: psx.input.port1 guncon
+
+For set X Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_0-+g
+For set Y Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_1-+g
+
 ### Requirements: 
 
   * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
