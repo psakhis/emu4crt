@@ -22,6 +22,7 @@
 #include "../psx.h"
 #include "../frontio.h"
 #include "guncon.h"
+#include <mednafen/mednafen.h>   // PSAKHIS TODO: should do better than this!
 
 namespace MDFN_IEN_PSX
 {
@@ -74,6 +75,12 @@ class InputDevice_GunCon final : public InputDevice
  // Video timing stuff
  bool prev_vsync;
  int line_counter;
+ 
+ // gunlight shader
+ bool prev_trigger_eff; //psakhis
+ int _gunlight_frames; //psakhis
+ int gunlight_wait; //psakhis
+ bool gunlight_cycle; //psakhis
 };
 
 InputDevice_GunCon::InputDevice_GunCon(void)
@@ -117,6 +124,11 @@ void InputDevice_GunCon::Power(void)
 
  prev_vsync = 0;
  line_counter = 0;
+ 
+ _gunlight_frames = 0; //psakhis
+ prev_trigger_eff = 0; //psakhis
+ gunlight_wait = 0; //psakhis
+ gunlight_cycle = false; //psakhis
 }
 
 void InputDevice_GunCon::StateAction(StateMem* sm, const unsigned load, const bool data_only, const char* sname_prefix)
@@ -198,7 +210,60 @@ void InputDevice_GunCon::UpdateInput(const void *data)
   os_shot_counter = 4;
  prev_oss = d8[4] & 0x8;
 
+ //PSAKHIS  
+ if(_gunlight_frames) 
+  _gunlight_frames--;
+ 
+ //printf("pre x=%d y=%d trigger_eff %d noclear %d frames %d\n", nom_x, nom_y, trigger_eff, trigger_noclear,_gunlight_frames);
+ if (trigger_eff && !prev_trigger_eff && os_shot_counter == 0) //trigger
+ { 
+   _gunlight_frames = gunlight_frames;	
+   if (!gunlight_cycle && _gunlight_frames) 
+   {
+     gunlight_cycle = true;
+     _gunlight_frames = _gunlight_frames + 4;	 //we need a once per video frame wait for blit
+     gunlight_wait = 4;    
+   }
+ }
+ 
+ if (gunlight_cycle && gunlight_wait <= 0 && !trigger_eff)
+      gunlight_cycle = false;
+ 
+ if (gunlight_cycle) 
+ {
+   gunlight_wait--;	
+   if (gunlight_wait > 0)
+   {
+     trigger_eff = false;	
+     trigger_noclear = false;         
+   } 
+   if (gunlight_wait == 0)
+   {
+     if (nom_x <= 0 || nom_y <= 0) 
+     {
+      trigger_eff = false;	
+      trigger_noclear = false;	
+      os_shot_counter = 4;
+     }     	     	     
+     else
+     {
+      trigger_eff = true;	
+      trigger_noclear = true;	
+      os_shot_counter = 0;
+     }
+   }	            
+ } 
+ 
+ if(_gunlight_frames)  
+  gunlight_apply = true; 
+ else
+  gunlight_apply = false;
+     	     
+ prev_trigger_eff = trigger_eff;  
+ // END PSAKHIS 
+ 
  //MDFN_DispMessage("%08x %08x", nom_x, nom_y);
+ //printf("post x=%d y=%d trigger_eff %d noclear %d frames %d\n", nom_x, nom_y, trigger_eff, trigger_noclear, _gunlight_frames);
 }
 
 bool InputDevice_GunCon::RequireNoFrameskip(void)
