@@ -114,7 +114,7 @@ static uint8 ReadZapper(int w)
 
 static void DrawZapper(int w, uint8* pix, int pix_y)
 {
- if (!MDFN_GetSettingB("nes.input.port1.zapper.crosshair"))	//psakhis
+ if (!MDFN_GetSettingB("nes.input.zapper.crosshair"))	//psakhis
  	NESCURSOR_DrawGunSight(w, pix, pix_y, ZD[w].mzx, ZD[w].mzy);
 }
 
@@ -132,8 +132,8 @@ static void UpdateZapper(int w, void *data)
  //https://www.nesdev.org/wiki/Zapper
  //Like the Tomee Zapp Gun, no 100ms wait for pull (simple switch)
  //This works with most existing zapper games which usually fire on a transition from 1 to 0. 
- if (MDFN_GetSettingB("nes.input.port1.zapper.clone")) 
- { 	 	  	 
+ if (MDFN_GetSettingB("nes.input.zapper.clone")) 
+ { 	 		 
   	if(new_b&3) //  simpler switch that returns 1 while the trigger is not pulled, and 0 when it is pulled		  
   	 ZD[w].bogo = 0;  	   	
   	else
