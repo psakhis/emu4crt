@@ -21,13 +21,14 @@ It brings "pixel-perfect" rendering by switching host resolution to match emulat
 Many options, meaningless in a CRT screen usage, have been removed from Mednafen in provided emu4crt builds (shaders, etc.).
 
 ### Gun games, new settings: 
- - core.shader gunlight -> this enables a extra brightness when trigger gun shoot
- - core.shader.gunlight_brightness -> new brightness to apply
- - core.shader.gunlight_flash_length -> input number to apply extra brightness, can be depending on the core/per-game. Try 1 and increase it
- - nes.input.zapper.clone -> works better for guncon2
- - nes.input.zapper.crosshair -> 1 for disable it
+  * core.shader gunlight -> this enables a extra brightness when trigger gun shoot
+  * core.shader.gunlight_brightness -> new brightness to apply
+  * core.shader.gunlight_flash_length -> input number to apply extra brightness, can be depending on the core/per-game. Try 1 and increase it
+  * nes.input.zapper.clone -> works better for guncon2
+  * nes.input.zapper.crosshair -> 1 for disable it
 
-* Requirements:
+### Requirements: 
+
   * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
