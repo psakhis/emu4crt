@@ -1,3 +1,4 @@
+
 #ifdef SYSTEM_CPP
 
 Input input;
@@ -95,7 +96,7 @@ uint8 Input::port_read(bool portnumber) {
     case DeviceSuperScope: {
       if(portnumber == 0) break;  //Super Scope in port 1 not supported ...
       if(p.counter0 >= 8) return 1;
-
+ 
       if(p.counter0 == 0) {
         //turbo is a switch; toggle is edge sensitive
         bool turbo = system.interface->input_poll(portnumber, p.device, 0, SuperScopeTurbo);
@@ -107,18 +108,51 @@ uint8 Input::port_read(bool portnumber) {
         }
 
         //trigger is a button
-        //if turbo is active, trigger is level sensitive; otherwise it is edge sensitive
-        p.superscope.trigger = false;
+        //if turbo is active, trigger is level sensitive; otherwise it is edge sensitive                
+        p.superscope.trigger = false;        
         bool trigger = system.interface->input_poll(portnumber, p.device, 0, SuperScopeTrigger);
         if(trigger && (p.superscope.turbo || !p.superscope.triggerlock)) {
           p.superscope.trigger = true;
           p.superscope.triggerlock = true;
         } else if(!trigger) {
-          p.superscope.triggerlock = false;
-        }
-
+          p.superscope.triggerlock = false;                  
+        }  
+        
         //cursor is a button; it is always level sensitive
         p.superscope.cursor = system.interface->input_poll(portnumber, p.device, 0, SuperScopeCursor);
+              
+        //PSAKHIS
+        if (p.superscope.gunlight_frames)
+         p.superscope.gunlight_frames--;       
+               
+        if (p.superscope.trigger || p.superscope.cursor)  {                       
+          p.superscope.gunlight_frames = gunlight_frames;         
+          if (!p.superscope.gunlight_cycle && p.superscope.gunlight_frames) {
+            p.superscope.gunlight_cycle = true;	 
+            p.superscope.gunlight_wait = 8;    
+          }      
+        }  
+        //printf("trigger %d lock %d cycle %d wait %d frames %d\n",p.superscope.trigger,p.superscope.triggerlock,p.superscope.gunlight_cycle,p.superscope.gunlight_wait,p.superscope.gunlight_frames);
+        if (p.superscope.gunlight_cycle && !p.superscope.gunlight_wait)
+          p.superscope.gunlight_cycle = false;
+               
+        if (p.superscope.gunlight_cycle) {
+          p.superscope.gunlight_wait--;	
+          if (p.superscope.gunlight_wait > 0) {
+            p.superscope.trigger = false;	
+            p.superscope.triggerlock = false;          
+          } 
+          else {
+            p.superscope.trigger = true;	
+            p.superscope.triggerlock = true;	                                  
+          }	            
+        }                  
+          
+        if (p.superscope.gunlight_frames) 
+         gunlight_apply = true;          
+        else
+         gunlight_apply = false; 
+        //END PSAKHIS                                                                                              
 
         //pause is a button; it is always edge sensitive
         p.superscope.pause = false;
@@ -133,6 +167,7 @@ uint8 Input::port_read(bool portnumber) {
         p.superscope.offscreen =
            p.superscope.x < 0 || p.superscope.x >= 256
         || p.superscope.y < 0 || p.superscope.y >= (ppu.overscan() ? 240 : 225);
+           
       }
 
       switch(p.counter0++) {
@@ -225,7 +260,7 @@ void Input::update() {
 
       p.superscope.x = max(-16, min(256 + 16, x));
       p.superscope.y = max(-16, min(240 + 16, y));
-
+          
       latchx = p.superscope.x;
       latchy = p.superscope.y;
     } break;
@@ -261,10 +296,11 @@ void Input::update() {
     latchx = ~0;
     latchy = ~0;
   } else {
-    //cursor is onscreen
+    //cursor is onscreen    
     latchx += 40;  //offset trigger position to simulate hardware latching delay
     latchx <<= 2;  //dot -> clock conversion
     latchx +=  2;  //align trigger on half-dot ala interrupts (speed optimization for sCPU::add_clocks)
+    
   }
 }
 
@@ -291,7 +327,11 @@ void Input::port_set_device(bool portnumber, unsigned device) {
     p.superscope.turbo     = false;
     p.superscope.pause     = false;
     p.superscope.offscreen = false;
-
+    
+    p.superscope.gunlight_frames = 0; //psakhis
+    p.superscope.gunlight_wait = 0; //psakhis   
+    p.superscope.gunlight_cycle = false; //psakhis
+    
     p.superscope.turbolock   = false;
     p.superscope.triggerlock = false;
     p.superscope.pauselock   = false;

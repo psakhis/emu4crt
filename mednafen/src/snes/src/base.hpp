@@ -12,7 +12,7 @@ static const unsigned bsnesSerializerVersion = 4;
 //enable debugging extensions (~15% speed hit)
 //#define DEBUGGER
 #undef DEBUGGER
-
+#include <mednafen/mednafen.h>   // PSAKHIS TODO: should do better than this!
 #include <libco/libco.h>
 
 #include <nall/algorithm.hpp>

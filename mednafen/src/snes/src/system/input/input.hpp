@@ -1,3 +1,4 @@
+
 class Input {
 public:
   enum Device {
@@ -74,6 +75,11 @@ public:
       bool turbolock;
       bool triggerlock;
       bool pauselock;
+      
+      int gunlight_frames;   //psakhis
+      int gunlight_wait;     //psakhis
+      bool gunlight_cycle;   //psakhis      
+      
     } superscope;
 
     struct justifier_t {
