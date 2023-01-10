@@ -24,7 +24,7 @@ Many options, meaningless in a CRT screen usage, have been removed from Mednafen
   * core.shader gunlight -> this enables a extra brightness when trigger gun shoot
   * core.shader.gunlight_brightness -> new brightness to apply
   * core.shader.gunlight_flash_length -> input number to apply extra brightness, can be depending on the core/per-game. Try 1 and increase it
-  * nes.input.zapper.clone -> works better for guncon2
+  * nes.input.zapper.clone -> works better for guncon2 (see https://www.nesdev.org/wiki/Zapper)
   * nes.input.zapper.crosshair -> 1 for disable it
 
 ### Requirements: 
