@@ -1621,6 +1621,26 @@ static NO_INLINE MDFN_HOT void RenderLine(void)
  T* const out_target = es->surface->pix<T>() + out_line * es->surface->pitchinpix;
  const uint32 w = ((BGMode & 0x7) == 0x5 || (BGMode & 0x7) == 0x6 || (ScreenMode & 0x08)) ? 512 : 256;
 
+// SLK 
+// printf("SNES_Faust Interface - Emulate - %d %d %d %d \n",resolution_to_change,resolution_to_change_w,w,prev_resolution_w); 
+ if(w != prev_resolution_w)
+ { 
+   //resolution_to_change_w = w; 	
+   //PSAKHIS - Fix mix width line renders on frame: ex Secret of Mana 2
+   if (resolution_to_change)   
+   {
+   	if (resolution_to_change_w < w)
+   		resolution_to_change_w = w;
+   }
+   else
+   {	
+   	resolution_to_change_w = w;   	   	   	
+   	resolution_to_change = true;
+   }	         
+   prev_resolution_w = w;
+ }
+// SLK - end
+
  es->LineWidths[out_line] = w;
  //
  LineTarget++;
