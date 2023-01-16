@@ -147,11 +147,9 @@ uint8 Input::port_read(bool portnumber) {
             p.superscope.triggerlock = true;	                                  
           }	            
         }                  
-          
-        if (p.superscope.gunlight_frames) 
-         gunlight_apply = true;          
-        else
-         gunlight_apply = false; 
+ 
+  	if(p.superscope.gunlight_frames > gunlight_pending_frames )  
+  	 gunlight_pending_frames = p.superscope.gunlight_frames;          
         //END PSAKHIS                                                                                              
 
         //pause is a button; it is always edge sensitive

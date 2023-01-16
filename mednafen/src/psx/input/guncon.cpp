@@ -254,10 +254,8 @@ void InputDevice_GunCon::UpdateInput(const void *data)
    }	            
  } 
  
- if(_gunlight_frames)  
-  gunlight_apply = true; 
- else
-  gunlight_apply = false;
+ if(_gunlight_frames > gunlight_pending_frames )  
+  gunlight_pending_frames = _gunlight_frames; 
      	     
  prev_trigger_eff = trigger_eff;  
  // END PSAKHIS 

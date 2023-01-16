@@ -177,11 +177,11 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  //PSAKHIS  
  if(_gunlight_frames) 
   _gunlight_frames--;
-  
+
  if (state == 0x6c) //trigger
  {
    if (state != prev_state && osshot_counter == -1)  //trigger non offset button simulated
-    _gunlight_frames = gunlight_frames; 	
+    _gunlight_frames = gunlight_frames * 2;          //midsync	
     
    const int32 osshot_total_gunlight = 250000;	
    osshot_counter_gunlight += time_elapsed;
@@ -196,11 +196,9 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  }
  else
   osshot_counter_gunlight = -1;
- 
- if(_gunlight_frames)  
-  gunlight_apply = true; 
- else
-  gunlight_apply = false;
+   
+ if(ceil(_gunlight_frames / 2) > gunlight_pending_frames )  
+  gunlight_pending_frames = ceil(_gunlight_frames / 2); 
      	     
  prev_state = state;  
  // END PSAKHIS 

@@ -150,11 +150,9 @@ static void UpdateZapper(int w, void *data)
   if((!(ZD[w].bogo)) && (!(ZD[w].mzb&3))) 
    ZD[w].gunlight_frames = gunlight_frames; //psakhis gunlight  		
   
-  if(ZD[w].gunlight_frames)  
-   gunlight_apply = true; 
-  else
-   gunlight_apply = false;
-//END PSAKHIS  
+  if(ZD[w].gunlight_frames > gunlight_pending_frames )  
+  gunlight_pending_frames = ZD[w].gunlight_frames;     
+ //END PSAKHIS  
 
  ZD[w].mzx = new_x;
  ZD[w].mzy = new_y;

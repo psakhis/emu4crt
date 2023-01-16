@@ -48,7 +48,7 @@ extern int current_game_resolution_w;
 extern int current_game_resolution_h;
 
 // gunlight
-extern bool gunlight_apply;
+extern unsigned int gunlight_pending_frames;
 extern unsigned int gunlight_frames;
 
 // SLK end

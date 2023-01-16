@@ -2072,11 +2072,12 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
     if(ogl_blitter)
     { 
      //PSAKHIS    		                       
-     if ((ogl_blitter_gunlight) && (gunlight_apply))      
-     	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     	     	 	       	     	      	        	     	     	        	     		     	
-     // END PSAKHIS
-     else         
-      ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);          	     
+     if ((ogl_blitter_gunlight) && (gunlight_pending_frames))  {    
+     	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     	     	 	       	     	      	        	     	     	        	     		     	    
+     	gunlight_pending_frames--;     
+     }// END PSAKHIS
+     else        
+      ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);          	               
     } 
     else
     {
