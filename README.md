@@ -1,14 +1,14 @@
-# **Mednafen 1.31 - UNSTABLE - emu4crt - A19**
+# **Mednafen 1.31 - UNSTABLE - emu4crt - A20**
 
 ### Important: 
 This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
 
 emu4crt is a Mednafen emulator mod intended to be used on a system connected to a CRT screen, typically a 15kHz TV or an arcade monitor.
 
-It brings "pixel-perfect" rendering by switching host resolution to match emulated system resolution.
+It brings "pixel-perfect" rendering by switching host resolution to match emulated system resolution and support gun games (tested Guncon2 on GroovyArcade).
 
 * Mednafen modules ported to emu4crt: 
-  * Sony Playstation (with chd support and sbi files)
+  * Sony Playstation (with chd support and sbi files).   
   * Sega Saturn / ST-V (win64 only) (with chd support)
   * Nintendo NES/Famicon (snes & snes_faust)
   * Nintendo Super NES/Super Famicom
@@ -20,7 +20,19 @@ It brings "pixel-perfect" rendering by switching host resolution to match emulat
 
 Many options, meaningless in a CRT screen usage, have been removed from Mednafen in provided emu4crt builds (shaders, etc.).
 
-* Requirements:
+### Gun games, new settings: 
+  * core.shader gunlight -> this enables a extra brightness when trigger gun shoot
+  * core.shader.gunlight_brightness -> new brightness to apply
+  * core.shader.gunlight_flash_length -> input number to apply extra brightness, can be depending core/per-game. Try 1 and increase it
+  * nes.input.zapper.clone -> works better for guncon2 (see https://www.nesdev.org/wiki/Zapper)
+  * nes.input.zapper.crosshair -> 1 for disable it
+
+In general, nes core Mednafen auto detect zapper with crc rom header, in other cores set input port, for example: psx.input.port1 guncon
+  * For set X Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_0-+g
+  * For set Y Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_1-+g
+
+### Requirements: 
+
   * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
@@ -121,6 +133,8 @@ CRT Emudriver's and libswitchres author, Calamity (http://geedorah.com/eiusdemmo
 SDL KMS mode author, Substring (https://github.com/substring/os)
 
 Silmalik for this great emu4crt project!
+
+Beardypig for guncon driver (https://github.com/beardypig/guncon2)
 
 ArcadeControls.com (www.arcadecontrols.com)
 
