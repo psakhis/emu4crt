@@ -882,15 +882,15 @@ void Video_SetSwitchres(int w,int h,double vfreq)
     sr_x_scale = 1;
   }
   //update new resolution
-  video_settings.xres = swres_result.width;
-  video_settings.yres = swres_result.height;
+  video_settings.xres = swres_result.width;  
+  video_settings.yres = swres_result.height;  
  }
 }
 //SLK + psakhis end
 
 //SLK + psakhis
 int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
-{
+{	
   printf("  VIDEO - Video_ChangeResolution - Requested video mode: %dx%d@%f\n", w, h, vfreq);      
   
   //psakhis 
@@ -2072,12 +2072,18 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
     if(ogl_blitter)
     { 
      //PSAKHIS    		                       
-     if ((ogl_blitter_gunlight) && (gunlight_pending_frames))  {    
+     if ((ogl_blitter_gunlight) && (gunlight_pending_frames))  {  
+     	SDL_GL_SetSwapInterval(0);  //don't worry on vsync --> to much faster for gun reading
      	ogl_blitter_gunlight->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);     	     	 	       	     	      	        	     	     	        	     		     	    
-     	gunlight_pending_frames--;     
+     	gunlight_pending_frames--;      
+     	if  (!gunlight_pending_frames)
+     	 SDL_GL_SetSwapInterval(MDFN_GetSettingB("video.glvsync"));   
+     	//printf("BLITET\n");   
      }// END PSAKHIS
-     else        
-      ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);          	               
+     else  {
+      ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);          	                    
+      //printf("no BLITET\n");       
+     } 
     } 
     else
     {
@@ -2159,21 +2165,23 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
 #if 1
  {
   int sub[2] = { 0, 0 };
-  SDL_DisplayMode mode;
+  //SDL_DisplayMode mode;
   if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
    SDL_GetWindowPosition(window, &sub[0], &sub[1]);
 
   sub[0] += screen_dest_rect.x;
-  sub[1] += screen_dest_rect.y;
-
-  if(SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(window), &mode) >= 0)
-  {
-   JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;   
+  sub[1] += screen_dest_rect.y;  
+  //PSAKHIS mode faulty on switchres
+  //if(SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(window), &mode) >= 0)
+  //{  	  
+   //JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;       
+   JoyGunTranslate[0].mul = (float)screen_w / screen_dest_rect.w / 32768.0;       
    JoyGunTranslate[0].sub = (float)sub[0] / screen_dest_rect.w;
-
-   JoyGunTranslate[1].mul = (float)mode.h / screen_dest_rect.h / 32768.0;
+   
+   //JoyGunTranslate[1].mul = (float)mode.h / screen_dest_rect.h / 32768.0;
+   JoyGunTranslate[1].mul = (float)screen_h / screen_dest_rect.h / 32768.0;
    JoyGunTranslate[1].sub = (float)sub[1] / screen_dest_rect.h;
-  }  
+  //}  
  }
 #endif
  //
@@ -2565,8 +2573,8 @@ void Video_PtoV(const int in_x, const int in_y, float* out_x, float* out_y)
 float Video_PtoV_J(const int32 inv, const bool axis, const bool scr_scale)
 {
  assert(VideoGI);
- assert(window);
-
+ assert(window); 
+ 
  if(!scr_scale)
   return 0.5 + (inv / 32768.0 - 0.5) * std::max<int32>(VideoGI->nominal_width, VideoGI->nominal_height) / (axis ? VideoGI->nominal_height : VideoGI->nominal_width);
  else

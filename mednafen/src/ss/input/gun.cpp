@@ -22,7 +22,13 @@
 #include "common.h"
 #include "gun.h"
 #include <mednafen/mednafen.h>   // PSAKHIS TODO: should do better than this!
-
+/*
+#include <Windows.h>
+#include <chrono>
+#include <iostream>
+#include <sys/time.h>
+#include <stdio.h>
+*/
 namespace MDFN_IEN_SS
 {
 
@@ -121,6 +127,8 @@ void IODevice_Gun::Power(void)
  prev_state = state; //psakhis
  osshot_counter_gunlight = -1; //psakhis
  _gunlight_frames = 0; //psakhis
+ gunlight_wait = 0; //psakhis
+ gunlight_cycle = false; //psakhis
 }
 
 void IODevice_Gun::TransformInput(uint8* const data, float gun_x_scale, float gun_x_offs) const
@@ -174,17 +182,61 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  else if((prev_ossb ^ cur_ossb) & cur_ossb)
   osshot_counter = 0;
 
+ //printf("GUN x=%d y=%d frames=%d time=%d\n",nom_coord[0],nom_coord[1],_gunlight_frames,time_elapsed);
  //PSAKHIS  
  if(_gunlight_frames) 
   _gunlight_frames--;
 
+ /*#ifdef WIN32*/ //slower with vsync activated, fixed disabling vsync on blit
+ #if 0
+ if (state == 0x6c) //trigger
+ { 
+    /*
+    struct timeval te; 
+    gettimeofday(&te, NULL); // get current time
+    long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
+    printf("milliseconds: %lld %d\n", milliseconds,_gunlight_frames);
+    */
+
+   _gunlight_frames = gunlight_frames;	
+   if (!gunlight_cycle && _gunlight_frames && state != prev_state && osshot_counter == -1) 
+   {
+     gunlight_cycle = true;
+     int nwait = 16;    
+     _gunlight_frames = _gunlight_frames + nwait;
+     gunlight_wait = nwait;    
+   }
+      
+ }
+ if (gunlight_cycle && gunlight_wait <= 0 && state != 0x6c)
+  gunlight_cycle = false;  
+ 
+ if (gunlight_cycle) 
+ {   
+   gunlight_wait--;	
+   if(nom_coord[0] || nom_coord[1]) 
+   {  state = 0x6c;
+      osshot_counter = -1; 	            //apply trigger if coords readed
+   } 
+   else
+   { 
+    state = prev_state;         
+    if (gunlight_wait == 0)  
+    {             
+      osshot_counter = 0;	      
+    }  
+   }    	     	            	            
+ }      
+ 
+ #else 
+ 
  if (state == 0x6c) //trigger
  {
    if (state != prev_state && osshot_counter == -1)  //trigger non offset button simulated
     _gunlight_frames = gunlight_frames * 2;          //midsync	
     
    const int32 osshot_total_gunlight = 250000;	
-   osshot_counter_gunlight += time_elapsed;
+   osshot_counter_gunlight += time_elapsed;      
    if(nom_coord[0] || nom_coord[1])   
     osshot_counter_gunlight = -1; 	            //apply trigger if coords readed
    else 
@@ -195,10 +247,12 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
    }
  }
  else
-  osshot_counter_gunlight = -1;
-   
+  osshot_counter_gunlight = -1; 
+  
+ #endif
+    
  if(ceil(_gunlight_frames / 2) > gunlight_pending_frames )  
-  gunlight_pending_frames = ceil(_gunlight_frames / 2); 
+  gunlight_pending_frames = ceil(_gunlight_frames / 2);  
      	     
  prev_state = state;  
  // END PSAKHIS 

@@ -51,6 +51,8 @@ class IODevice_Gun final : public IODevice
  uint8 prev_state; //psakhis 
  int32 osshot_counter_gunlight; //psakhis
  int _gunlight_frames; //psakhis
+ int gunlight_wait; //psakhis
+ bool gunlight_cycle; //psakhis
  
  int32 osshot_counter;
  bool prev_ossb;
