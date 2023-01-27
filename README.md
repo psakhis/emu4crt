@@ -30,6 +30,8 @@ Many options, meaningless in a CRT screen usage, have been removed from Mednafen
 In general, nes core Mednafen auto detect zapper with crc rom header, in other cores set input port, for example: psx.input.port1 guncon
   * For set X Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_0-+g
   * For set Y Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_1-+g
+  
+  Be sure you have activaded corrected aspect ratio on cores. Example: psx.correct_aspect 1
 
 ### Requirements: 
 
