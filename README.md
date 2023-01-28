@@ -67,8 +67,6 @@ emu4crt can be use in three modes:
 |PCFX** |   | X |   | X |   |   |   |   |   |
 |MD/SMS |   | X | X |   |   |   |   |   |   |
 
-(^) 240 visible lines. Aspect 3/2
-
 * Lines, for each column:
 
    NTSC modes : 240 and 480 lines @ 60 Hz 
@@ -77,6 +75,8 @@ emu4crt can be use in three modes:
    __*__ -> 240 and 288 lines only
 
    __**__ -> NTSC modes only
+   
+   __^__ -> 240 visible lines. Aspect 3/2
 
 ### `Super Resolutions`
 
