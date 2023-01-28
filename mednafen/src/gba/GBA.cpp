@@ -741,10 +741,11 @@ static void Load(GameFile* gf)
    
    //psakhis
    //native_resolution_vcenter = false;
-   resolution_to_change_w = 240;	
+   resolution_to_change_w = 320;	
    resolution_to_change_h = 240;
    resolution_to_change_vfreq = 59.715400;
    resolution_to_change = true;
+   native_resolution_vcenter = true;
    //end psakhis
    
    uint16 *temp = (uint16 *)(rom+((size+1)&~1));
