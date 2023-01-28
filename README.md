@@ -30,6 +30,8 @@ Many options, meaningless in a CRT screen usage, have been removed from Mednafen
 In general, nes core Mednafen auto detect zapper with crc rom header, in other cores set input port, for example: psx.input.port1 guncon
   * For set X Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_0-+g
   * For set Y Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_1-+g
+  
+  Be sure you have activaded corrected aspect ratio on cores. Example: psx.correct_aspect 1
 
 ### Requirements: 
 
@@ -58,13 +60,12 @@ emu4crt can be use in three modes:
 |:------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 |NES*   |   | X |   |   |   |   |   |   |   |
 |SNES   |   | X |   |   |   |   | X |   |   |
-|GBA    | X |   |   |   |   |   |   |   |   |
+|GBA^   |   |   | X |   |   |   |   |   |   |
 |SATURN |   |   | X |   | X |   |   | X | X |
 |PSX    |   | X | X |   |   | X | X | X |   |
 |PCE**  |   | X | X |   |   |   | X |   |   |
 |PCFX** |   | X |   | X |   |   |   |   |   |
 |MD/SMS |   | X | X |   |   |   |   |   |   |
-
 
 * Lines, for each column:
 
@@ -74,6 +75,8 @@ emu4crt can be use in three modes:
    __*__ -> 240 and 288 lines only
 
    __**__ -> NTSC modes only
+   
+   __^__ -> 240 visible lines. Aspect 3/2 (240x160)
 
 ### `Super Resolutions`
 
