@@ -60,13 +60,14 @@ emu4crt can be use in three modes:
 |:------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 |NES*   |   | X |   |   |   |   |   |   |   |
 |SNES   |   | X |   |   |   |   | X |   |   |
-|GBA    | X |   |   |   |   |   |   |   |   |
+|GBA^   |   |   | X |   |   |   |   |   |   |
 |SATURN |   |   | X |   | X |   |   | X | X |
 |PSX    |   | X | X |   |   | X | X | X |   |
 |PCE**  |   | X | X |   |   |   | X |   |   |
 |PCFX** |   | X |   | X |   |   |   |   |   |
 |MD/SMS |   | X | X |   |   |   |   |   |   |
 
+(^) 240 visible lines. Aspect 3/2
 
 * Lines, for each column:
 
