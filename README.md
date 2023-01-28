@@ -76,7 +76,7 @@ emu4crt can be use in three modes:
 
    __**__ -> NTSC modes only
    
-   __^__ -> 240 visible lines. Aspect 3/2
+   __^__ -> 240 visible lines. Aspect 3/2 (240x160)
 
 ### `Super Resolutions`
 
