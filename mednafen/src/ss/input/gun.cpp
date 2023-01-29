@@ -214,7 +214,7 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  if (gunlight_cycle) 
  {   
    gunlight_wait--;	
-   if(nom_coord[0] || nom_coord[1]) 
+   if(nom_coord[0] && nom_coord[1]) 
    {  state = 0x6c;
       osshot_counter = -1; 	            //apply trigger if coords readed
    } 
@@ -237,7 +237,7 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
     
    const int32 osshot_total_gunlight = 250000;	
    osshot_counter_gunlight += time_elapsed;      
-   if(nom_coord[0] || nom_coord[1])   
+   if(nom_coord[0] && nom_coord[1])   
     osshot_counter_gunlight = -1; 	            //apply trigger if coords readed
    else 
    {
