@@ -31,7 +31,9 @@ In general, nes core Mednafen auto detect zapper with crc rom header, in other c
   * For set X Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_0-+g
   * For set Y Axis use as joystick, for example-> joystick 0x00030b9a016a01000004000800000000 abs_1-+g
   
-  Be sure you have activaded corrected aspect ratio on cores. Example: psx.correct_aspect 1
+  Be sure you have activaded corrected aspect ratio on cores. Example: psx.correct_aspect 1 / psx.h_overscan 0
+  
+  If you have a GunCon2 on Windows see https://github.com/psakhis/guncon2
 
 ### Requirements: 
 
