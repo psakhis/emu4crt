@@ -46,6 +46,7 @@ extern double resolution_to_change_vfreq;
 // current video mode information - set in drivers\video.cpp
 extern int current_game_resolution_w; 
 extern int current_game_resolution_h;
+extern int current_game_rotated;
 
 // gunlight
 extern unsigned int gunlight_pending_frames;

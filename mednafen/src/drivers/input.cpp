@@ -1773,13 +1773,17 @@ static void CheckCommandKeys(void)
   }
 
   if(CK_Check(CK_ROTATESCREEN))
-  {
+  {     	 
    if(CurGame->rotated == MDFN_ROTATE0)
     CurGame->rotated = MDFN_ROTATE90;
    else if(CurGame->rotated == MDFN_ROTATE90)
     CurGame->rotated = MDFN_ROTATE270;
    else if(CurGame->rotated == MDFN_ROTATE270)
     CurGame->rotated = MDFN_ROTATE0;
+   
+   //psakhis 
+   resolution_to_change = true;    
+   printf("  INPUT - CheckCommandKeys - Rotate key detected\n");
   }
 
   if(CK_CheckActive(CK_STATE_REWIND))

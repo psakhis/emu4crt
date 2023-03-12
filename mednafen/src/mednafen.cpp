@@ -64,6 +64,7 @@ int resolution_to_change_w;
 int resolution_to_change_h;
 int current_game_resolution_w;
 int current_game_resolution_h;
+int current_game_rotated = 0;
 bool native_resolution_vcenter = true;
 // SLK end
 //bool psx_native_resolution_bars = false; //psakhis

@@ -1498,9 +1498,11 @@ static int SwitchLoop(void *arg)
 	 if (MThreading::Sem_Wait(STWakeupSem)) { //activator semaphore from main loop	  	 	
 	  if(MDFN_LIKELY(NeedResolutionChange) && !MDFN_LIKELY(NeedResolutionRefresh))  //redundant, safetly close
 	  {     
-	    if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h)) {  
+	    if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated)) {  
+	      if (current_game_rotated != CurGame->rotated) 
+	        printf("SWITCH - Activated - Rotate detected\n");   	        	                                                                                                                                                               		
 	      printf("SWITCH - Activated - Current resolution %dx%d - Changing to %dx%d@%f\n",current_game_resolution_w,current_game_resolution_h,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
-	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);	    	    	      	      
+	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);		    	    	      	      	      
 	    } 
 	    else {
 	      //printf("SWITCH - Activated - Bypassed from %dx%d@%f\n",resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           			      	      
@@ -2451,7 +2453,7 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	    //
 	    NeedVideoSync = 0;
            }
-	   // SLK + psakhis     		   
+	   // SLK + psakhis     	   
 	   if(MDFN_LIKELY(NeedResolutionChange) && MDFN_LIKELY(NeedResolutionRefresh))
 	   {                                                                                                              
 	    printf("MAIN - VIDEO - Refresh blitter after a resolution change\n");                                                     
@@ -2468,15 +2470,16 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	   }
 
 	   {
-	    const int vtr = VTReady.load(std::memory_order_acquire);
+	    const int vtr = VTReady.load(std::memory_order_acquire);	    
 
-            if(vtr >= 0)
+            if(vtr >= 0)       
             {
              BlitScreen(SoftFB[vtr].surface.get(), &SoftFB[vtr].rect, SoftFB[vtr].lw.get(), VTRotated, SoftFB[vtr].field, VTSSnapshot);
 
 	     // Set to -1 after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
              VTReady.store(-1, std::memory_order_release);
-            }
+            }            
+	     
 	   }
 	  }
 	  //

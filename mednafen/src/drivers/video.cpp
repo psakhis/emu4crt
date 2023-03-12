@@ -524,8 +524,8 @@ static MDFN_PixelFormat osd_pf;	 // Pixel format for OSD textures/surfaces
 static MDFN_PixelFormat emu_pf;
 
 // SLK SR
-int sr_x_scale = 1;
-int sr_y_scale = 1;
+double sr_x_scale = 1;
+double sr_y_scale = 1;
 
 static INLINE void MarkNeedBBClear(void)
 {
@@ -746,8 +746,10 @@ static bool GenerateFullscreenDestRect(void)
  { //psakhis
   if (use_native_resolution || use_switchres || use_super_resolution) 
   {
-    exs = sr_x_scale;
-    eys = sr_y_scale;
+    exs = sr_x_scale; 
+    eys = sr_y_scale;   
+    if(rotated == MDFN_ROTATE90 || rotated == MDFN_ROTATE270) 
+      std::swap(exs, eys);       
   } 
   else //static
   {   	
@@ -757,10 +759,10 @@ static bool GenerateFullscreenDestRect(void)
     
   screen_dest_rect.w = floor(0.5 + VideoGI->nominal_width * exs);
   screen_dest_rect.h = floor(0.5 + VideoGI->nominal_height * eys);
-
+    
   if(rotated == MDFN_ROTATE90 || rotated == MDFN_ROTATE270)
    std::swap(screen_dest_rect.w, screen_dest_rect.h);
-
+     
   screen_dest_rect.x = (screen_w - screen_dest_rect.w) / 2;
   screen_dest_rect.y = (screen_h - screen_dest_rect.h) / 2;
  }
@@ -849,32 +851,192 @@ static void Video_WinSetVideoMode(int iWidth, int iHeight)
 };
 #endif
 
-//SLK + psakhis
-void Video_SetSwitchres(int w,int h,double vfreq)
-{
- printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,rotated);   
+//psakhis: WIN32 flush modes to driver
+void Video_Switchres_Flush(const char *shortname, double vfreq)
+{ 
+ printf("  VIDEO - Video_Switchres_Flush - Flushing modes core(%s), refresh(%f)\n", shortname, vfreq); 
+ int pal = 0;
+ if (vfreq > 0 && vfreq < 55)
+  pal = 1;
  sr_mode swres_result;
- unsigned char interlace = 0;	       
+ int sr_mode_flags = SR_MODE_DONT_FLUSH;    
+ if (!strcmp(shortname, "nes")) {  
+   if (pal) {
+    retSR = sr_add_mode(256, 288, vfreq, sr_mode_flags, &swres_result);     
+   }    		
+   else {
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);       
+   }    
+ }
+ if (!strcmp(shortname, "snes") || !strcmp(shortname, "snes_faust")) {  
+   if (pal) {
+    retSR = sr_add_mode(256, 288, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(512, 288, vfreq, sr_mode_flags, &swres_result);     
+    }
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(256, 576, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(512, 576, vfreq, sr_mode_flags, &swres_result);       
+    } 
+   }			
+   else {
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(512, 240, vfreq, sr_mode_flags, &swres_result);       
+    } 
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(256, 480, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(512, 480, vfreq, sr_mode_flags, &swres_result);       
+    } 
+   }    
+ }
+ if (!strcmp(shortname, "gba")) {     
+    retSR = sr_add_mode(320, 240, vfreq, sr_mode_flags, &swres_result);              
+ }
+ if (!strcmp(shortname, "ss")) {  
+   if (pal) {
+    retSR = sr_add_mode(320, 288, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 320) {
+     retSR = sr_add_mode(352, 288, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(640, 288, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(704, 288, vfreq, sr_mode_flags, &swres_result); 
+    }
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(320, 576, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 320) {
+     retSR = sr_add_mode(352, 576, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(640, 576, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(704, 576, vfreq, sr_mode_flags, &swres_result); 
+    } 
+   }			
+   else {
+    retSR = sr_add_mode(320, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 320) {
+     retSR = sr_add_mode(352, 240, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(640, 240, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(704, 240, vfreq, sr_mode_flags, &swres_result); 
+    } 
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(320, 480, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 320) {
+     retSR = sr_add_mode(352, 480, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(640, 480, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(704, 480, vfreq, sr_mode_flags, &swres_result);  
+    } 
+   }    
+ }
+ if (!strcmp(shortname, "psx")) {  
+   if (pal) {
+    retSR = sr_add_mode(256, 288, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 288, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(368, 288, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(512, 288, vfreq, sr_mode_flags, &swres_result); 
+     retSR = sr_add_mode(640, 288, vfreq, sr_mode_flags, &swres_result); 
+    }
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(256, 576, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 576, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(368, 576, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(512, 576, vfreq, sr_mode_flags, &swres_result); 
+     retSR = sr_add_mode(640, 576, vfreq, sr_mode_flags, &swres_result); 
+    } 
+   }			
+   else {
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 240, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(368, 240, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(512, 240, vfreq, sr_mode_flags, &swres_result); 
+     retSR = sr_add_mode(640, 240, vfreq, sr_mode_flags, &swres_result); 
+    } 
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(256, 480, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 480, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(368, 480, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(512, 480, vfreq, sr_mode_flags, &swres_result);  
+     retSR = sr_add_mode(640, 480, vfreq, sr_mode_flags, &swres_result);  
+    } 
+   }    
+ }
+ if (!strcmp(shortname, "pce") || !strcmp(shortname, "pce_fast")) {    
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 240, vfreq, sr_mode_flags, &swres_result);       	
+     retSR = sr_add_mode(512, 240, vfreq, sr_mode_flags, &swres_result);       
+    }    
+ }
+ if (!strcmp(shortname, "pcfx")) {    
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(341, 240, vfreq, sr_mode_flags, &swres_result);       	     
+    }    
+ }
+ if (!strcmp(shortname, "sms")) {    
+    if (pal) {	
+     retSR = sr_add_mode(256, 288, vfreq, sr_mode_flags, &swres_result);   
+    } else {    
+     retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);       	     
+    }    
+ }
+ if (!strcmp(shortname, "md")) {  
+   if (pal) {
+    retSR = sr_add_mode(256, 288, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 288, vfreq, sr_mode_flags, &swres_result);     
+    }
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(256, 576, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 576, vfreq, sr_mode_flags, &swres_result);       
+    } 
+   }			
+   else {
+    retSR = sr_add_mode(256, 240, vfreq, sr_mode_flags, &swres_result);   
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 240, vfreq, sr_mode_flags, &swres_result);       
+    } 
+    sr_mode_flags = SR_MODE_INTERLACED | SR_MODE_DONT_FLUSH;
+    retSR = sr_add_mode(240, 480, vfreq, sr_mode_flags, &swres_result);  
+    if (swres_result.width == 256) {
+     retSR = sr_add_mode(320, 480, vfreq, sr_mode_flags, &swres_result);       
+    } 
+   }    
+ }
+ retSR = sr_flush();
+ printf("  VIDEO - Video_Switchres_Flush - Flushing applied\n"); 
+}
+//psakhis end
+
+
+//SLK + psakhis
+void Video_SetSwitchres(int w, int h, double vfreq, int orientation)
+{
+ printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,orientation);   
+ sr_mode swres_result;
+ int sr_mode_flags = 0; 
+ 
  if (h > 288) 
-  interlace = 1;
+  sr_mode_flags = SR_MODE_INTERLACED;
  
- /*
- if (rotated ==  MDFN_ROTATE90 || rotated == MDFN_ROTATE270)
-  sr_set_rotation(1);
- else
-  sr_set_rotation(0);
- */
+ if (orientation ==  MDFN_ROTATE90 || orientation == MDFN_ROTATE270)
+  sr_mode_flags = sr_mode_flags | SR_MODE_ROTATED;  
  
- //retSR = sr_add_mode(w, h, vfreq, interlace, &swres_result); //only applied on win32 at first sdl change  
- retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
- printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%d y=%d\n", swres_result.width, swres_result.height,swres_result.refresh, swres_result.x_scale, swres_result.y_scale);		
+ retSR = sr_add_mode(w, h, vfreq, sr_mode_flags, &swres_result);   
+ //retSR = sr_switch_to_mode(w, h, vfreq, interlace, &swres_result);
+ retSR = sr_set_mode(swres_result.id); 
+ printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%.4f y=%.4f stretched(%d)\n", swres_result.width, swres_result.height,swres_result.vfreq, swres_result.x_scale, swres_result.y_scale, swres_result.is_stretched);		
  printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);          
  
  if (retSR && swres_result.width >= w && swres_result.height >= h) {
   if (video_settings.fullscreen) 
   { //fullscreen
    sr_x_scale = swres_result.x_scale;
-   sr_y_scale = swres_result.y_scale;   	
+   sr_y_scale = swres_result.y_scale;       
   } 
   else 
   { //windowed (no scale)
@@ -895,12 +1057,14 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
   
   //psakhis 
   if (use_super_resolution && h == current_game_resolution_h) { //no switch requeried
-  	int sr_x_scale_before_switch = sr_x_scale;
-  	sr_x_scale = (int) (2560 / w); //refresh x scale
-  	current_game_resolution_w = w; 	  		
-  	printf("  VIDEO - Video_ChangeResolution - Super resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);    	  	
+  	double sr_x_scale_before_switch = sr_x_scale;
+  	int current_game_rotated_before_switch = current_game_rotated;  	
+  	sr_x_scale = (2560.0 / w); //refresh x scale
+  	current_game_resolution_w = w; 	  
+  	current_game_rotated = gi->rotated;		
+  	printf("  VIDEO - Video_ChangeResolution - Super resolution change bypassed. Only apply scaling scale (%.4f,%.4f) \n",sr_x_scale,sr_y_scale);    	  	
   	MarkNeedBBClear();  	
-  	return (sr_x_scale_before_switch != sr_x_scale);	
+  	return (sr_x_scale_before_switch != sr_x_scale || current_game_rotated_before_switch != current_game_rotated);	
   }  
   //end psakhis      
   
@@ -911,7 +1075,7 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     current_game_resolution_w = w;
     current_game_resolution_h = h;
     MarkNeedBBClear();    
-    /*
+    
     if(rotated == MDFN_ROTATE90 || rotated == MDFN_ROTATE270) //ST-V 
       SDL_SetWindowSize(window, h, w);      
     else
@@ -921,7 +1085,7 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     SDL_GetWindowPosition(window, &x, &y);
     SDL_PumpEvents();
     SDL_SetWindowPosition(window, x, y);
-    */
+    
     sr_x_scale = 1;
     sr_y_scale = 1;    
   }
@@ -931,18 +1095,21 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
     printf("  VIDEO - Video_ChangeResolution - Video mode: FULLSCREEN\n");   
     if (use_switchres) //psakhis new method
     {
-    	int sr_x_scale_before_switch = sr_x_scale;
+    	double sr_x_scale_before_switch = sr_x_scale;    	
+    	int current_game_rotated_before_switch = current_game_rotated;
     	int xres_before_switch = video_settings.xres;   
-    	Video_SetSwitchres(w,h,vfreq);    	
+    	Video_SetSwitchres(w, h, vfreq, gi->rotated);    	
     	
     	if (video_settings.xres == xres_before_switch && h == current_game_resolution_h) { //no switch requiered
     		current_game_resolution_w = w;
-    	 	printf("  VIDEO - Video_ChangeResolution - Switchres resolution change bypassed. Only apply scaling scale (%d,%d) \n",sr_x_scale,sr_y_scale);
+    		current_game_rotated = gi->rotated;		
+    	 	printf("  VIDEO - Video_ChangeResolution - Switchres resolution change bypassed. Only apply scaling scale (%.4f,%.4f) \n",sr_x_scale,sr_y_scale);
     	 	MarkNeedBBClear();    	 	
-    	 	return (sr_x_scale_before_switch != sr_x_scale);    	  	
+    	 	return (sr_x_scale_before_switch != sr_x_scale || current_game_rotated_before_switch != current_game_rotated);    	  	
     	}  
     	current_game_resolution_w = w;
-    	current_game_resolution_h = h;     	 	     	    	        
+    	current_game_resolution_h = h;     	 	
+    	current_game_rotated = gi->rotated;		     	    	        
     }
     else
     {
@@ -984,14 +1151,15 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
         else
         {   
           //psakhis      
-          sr_x_scale = (int) (mode.w / w);
-          sr_y_scale = (int) (mode.h / h);   
+          sr_x_scale = (double) mode.w / w;
+          sr_y_scale = (double) mode.h / h;   
           video_settings.xres = mode.w;
   	  video_settings.yres = mode.h;      	  
   	  current_game_resolution_w = w;
           current_game_resolution_h = h; 
+          current_game_rotated = rotated;		
           //end psakhis
-          printf("  VIDEO - Video_ChangeResolution - Received: \t%dx%dpx @ %dhz ,scale (%d,%d)\n", mode.w, mode.h, mode.refresh_rate,sr_x_scale,sr_y_scale);                                        
+          printf("  VIDEO - Video_ChangeResolution - Received: \t%dx%dpx @ %dhz ,scale (%.4f,%.4f)\n", mode.w, mode.h, mode.refresh_rate,sr_x_scale,sr_y_scale);                                        
           #ifdef WIN32
           // Use Win32 API for resolution chang
           Video_WinSetVideoMode(mode.w,mode.h);          
@@ -1008,7 +1176,7 @@ int Video_ChangeResolution(MDFNGI *gi, int w, int h, double vfreq)
   }
 
   // OSD D Rect - vertical offest
-  switch(video_settings.yres / sr_y_scale){
+  switch(h){
     case 240:SMDRect.y = video_settings.yres - SMDRect.h - 18;
              break;
     case 288:SMDRect.y = video_settings.yres - SMDRect.h - 32;
@@ -1207,6 +1375,7 @@ void Video_Sync(MDFNGI *gi)
    MDFN_printf(_("Loading switchres.ini...\n"));
    MDFN_printf("\n");
    sr_init(); 
+   MDFN_printf("sr_get_version %s\n",sr_get_version());
    
    //take care multi-monitor
    if (video_settings.fs_display >= 0) {
@@ -1241,7 +1410,12 @@ void Video_Sync(MDFNGI *gi)
    MDFN_printf("\n");
    //end ini loadings
    
-   printf("  VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);         
+   #ifdef WIN32
+     Video_Switchres_Flush(gi->shortname, resolution_to_change_vfreq);
+   #endif
+   
+   printf("  VIDEO - Video_Sync - SWITCHRES loaded - %u\n",(unsigned int)retSR);    
+        
    video_settings.xres = 0; //sdl get desktop resolution - switch is delegated to switchres
    video_settings.yres = 0; //sdl get desktop resolution - switch is delegated to switchres   
    
@@ -1267,8 +1441,9 @@ void Video_Sync(MDFNGI *gi)
   //video_settings.shader = SHADER_NONE;  
   video_settings.stretch = 0;  
   
-  rotated = 0; //ST-V Original hard
+  rotated = 0; //ST-V Original hard  
   gi->rotated = rotated;
+  current_game_rotated = rotated;  
  }
  //
  //
@@ -1548,13 +1723,13 @@ void Video_Sync(MDFNGI *gi)
   //psakhis - delegate first switch to switchres
  if (use_switchres) 
  {
-   Video_SetSwitchres(resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);
+   Video_SetSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, gi->rotated);
    Video_BlitRefresh();  
  }
  else
  {	
-   sr_x_scale = (int) (mode.w / resolution_to_change_w); //psakhis - scale corrected 
-   sr_y_scale = (int) (mode.h / resolution_to_change_h); //psakhis - scale corrected
+   sr_x_scale = (double) mode.w / resolution_to_change_w; //psakhis - scale corrected 
+   sr_y_scale = (double) mode.h / resolution_to_change_h; //psakhis - scale corrected
 
 #if 0
   // ugggh
@@ -1572,7 +1747,7 @@ void Video_Sync(MDFNGI *gi)
   }
  } 
  //end psakhis 
-  printf("  VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%d,%d)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
+  printf("  VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%.4f,%.4f)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
  } 
  
  //
@@ -1720,7 +1895,7 @@ void Video_Sync(MDFNGI *gi)
   // SLK - Vertical offset for OSD messages  
   if(use_native_resolution || use_super_resolution || use_switchres)
   {
-   switch(screen_h / sr_y_scale){
+   switch(screen_h){
     case 240:SMDRect.y = screen_h - SMDRect.h - 18;
 		 break;
     case 288:SMDRect.y = screen_h - SMDRect.h - 32;
@@ -2275,35 +2450,54 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
 
     if(rotated == MDFN_ROTATE90)
     {
-     sub_dest_rect.x = screen_dest_rect.x + (last_y - src_rect.y) * screen_dest_rect.w / src_rect.h;
-     sub_dest_rect.y = screen_dest_rect.y;
+     if (use_native_resolution || use_super_resolution || use_switchres) {
+      sub_dest_rect.x = screen_dest_rect.x + (last_y - src_rect.y) * sr_x_scale;
+      sub_dest_rect.y = screen_dest_rect.y;
+      
+      sub_dest_rect.w = sub_src_rect.h * sr_x_scale;
+      sub_dest_rect.h = screen_dest_rect.h;	           
+     } 
+     else {     
+      sub_dest_rect.x = screen_dest_rect.x + (last_y - src_rect.y) * screen_dest_rect.w / src_rect.h;
+      sub_dest_rect.y = screen_dest_rect.y;
 
-     sub_dest_rect.w = sub_src_rect.h * screen_dest_rect.w / src_rect.h;
-     sub_dest_rect.h = screen_dest_rect.h;
+      sub_dest_rect.w = sub_src_rect.h * screen_dest_rect.w / src_rect.h;
+      sub_dest_rect.h = screen_dest_rect.h;
+     } 
      //printf("sdr.x=%f, sdr.w=%f\n", (double)screen_dest_rect.x + (double)(last_y - src_rect.y) * screen_dest_rect.w / src_rect.h, (double)sub_src_rect.h * screen_dest_rect.w / src_rect.h);
     }
     else if(rotated == MDFN_ROTATE270)
     {
-     sub_dest_rect.x = screen_dest_rect.x + (src_rect.h - (y - src_rect.y)) * screen_dest_rect.w / src_rect.h;
-     sub_dest_rect.y = screen_dest_rect.y;
+      if (use_native_resolution || use_super_resolution || use_switchres) {
+       sub_dest_rect.x = screen_dest_rect.x + (src_rect.h - (y - src_rect.y)) * sr_x_scale;
+       sub_dest_rect.y = screen_dest_rect.y;
+      
+       sub_dest_rect.w = sub_src_rect.h * sr_x_scale;
+       sub_dest_rect.h = screen_dest_rect.h;	           
+     } 
+     else {  	
+      sub_dest_rect.x = screen_dest_rect.x + (src_rect.h - (y - src_rect.y)) * screen_dest_rect.w / src_rect.h;
+      sub_dest_rect.y = screen_dest_rect.y;
 
-     sub_dest_rect.w = sub_src_rect.h * screen_dest_rect.w / src_rect.h;
-     sub_dest_rect.h = screen_dest_rect.h;
+      sub_dest_rect.w = sub_src_rect.h * screen_dest_rect.w / src_rect.h;
+      sub_dest_rect.h = screen_dest_rect.h;
+     } 
     }
     else
     {
      if (use_native_resolution || use_super_resolution || use_switchres)
-      {
+     {
        // SLK - (prevent) resizing and centering
-       //printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x);
+       //printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d rect.w %d \n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x,screen_dest_rect.w);
+   
        sub_dest_rect.x = screen_dest_rect.x;
        sub_dest_rect.w = screen_dest_rect.w;
        sub_dest_rect.y = screen_dest_rect.y + ((last_y - src_rect.y) * sr_y_scale); 
        sub_dest_rect.h = sub_src_rect.h * sr_y_scale;
-                     
+                    
        //printf("sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);       
        if (sub_src_rect.w  > (sub_dest_rect.w / sr_x_scale)) // horizontal crop to fit screen
-       {
+       {       	
        	//psakhis horrible hack centering psx       
         //printf("Horizontal centering ON sub_src_rect.x = %d, (sub_src_rect.w  vs sub_dest_rect.w / sr_x_scale):%d vs %d\n",sub_src_rect.x,sub_src_rect.w, (sub_dest_rect.w / sr_x_scale));         
         //if (psx_native_resolution_bars && sub_src_rect.w > sub_dest_rect.w && sr_x_scale == 1) {        	        	        
@@ -2314,9 +2508,9 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
         //else { 
           //SLK
           // sub_src_rect.x = (sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2;  
-          //psakhis correct centering                       
-          sub_src_rect.x = sub_src_rect.x + ((sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2);
-          sub_src_rect.w = sub_dest_rect.w / sr_x_scale;        
+          //psakhis correct centering                                
+            sub_src_rect.x = sub_src_rect.x + ((sub_src_rect.w - (sub_dest_rect.w / sr_x_scale)) / 2);
+            sub_src_rect.w = sub_dest_rect.w / sr_x_scale;                  
 	//}
        } 
        
@@ -2325,8 +2519,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
        {
          sub_src_rect.x = sub_src_rect.x + ((sub_src_rect.w - resolution_to_change_w) / 2);
          sub_src_rect.w = resolution_to_change_w;
-       }*/
-           
+       }*/      
        if (native_resolution_vcenter == true) // default vertical centering
        {
         //printf("    Vertical centering ON - src_rect.h:%d sub_dest_rect.y:%d screen_dest_rect.h:%d sr_y_scale:%d \n",src_rect.h,sub_dest_rect.y,screen_dest_rect.h,sr_y_scale);
@@ -2337,29 +2530,30 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
         //printf("    Vertical centering OFF (psx)\n");
         sub_dest_rect.h = sub_src_rect.h * (screen_dest_rect.h) / src_rect.h;
         // sub_dest_rect.h = (sub_src_rect.h + sub_src_rect.y) * sr_y_scale;
-       }       
+       }  
+       
        //printf("      Output - SLK sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);
        //printf("      Output - SLK sub_dest_rect:   %dx%d %d,%d\n",sub_dest_rect.w,sub_dest_rect.h,sub_dest_rect.x,sub_dest_rect.y);
        //printf("      Output - SLK sub_screen_rect: %dx%d %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
 
     }
-    else
-    {
-     //printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x);      
-     sub_dest_rect.x = screen_dest_rect.x;
-     sub_dest_rect.w = screen_dest_rect.w;
-     sub_dest_rect.y = screen_dest_rect.y + (last_y - src_rect.y) * screen_dest_rect.h / src_rect.h;
-     sub_dest_rect.h = sub_src_rect.h * screen_dest_rect.h / src_rect.h;
+     else
+     {
+      //printf("      src_rect:    %dx%d - X:%d, cmdY:%d rect.x %d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y,screen_dest_rect.x);      
+      sub_dest_rect.x = screen_dest_rect.x;
+      sub_dest_rect.w = screen_dest_rect.w;
+      sub_dest_rect.y = screen_dest_rect.y + (last_y - src_rect.y) * screen_dest_rect.h / src_rect.h;
+      sub_dest_rect.h = sub_src_rect.h * screen_dest_rect.h / src_rect.h;
      
-     //printf("      Output - PSAKHIS sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);
-     //printf("      Output - PSAKHIS sub_dest_rect:   %dx%d %d,%d\n",sub_dest_rect.w,sub_dest_rect.h,sub_dest_rect.x,sub_dest_rect.y);
-     //printf("      Output - PSAKHIS sub_screen_rect: %dx%d %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
-    }
-
+      //printf("      Output - PSAKHIS sub_src_rect:    %dx%d %d,%d\n",sub_src_rect.w,sub_src_rect.h,sub_src_rect.x,sub_src_rect.y);
+      //printf("      Output - PSAKHIS sub_dest_rect:   %dx%d %d,%d\n",sub_dest_rect.w,sub_dest_rect.h,sub_dest_rect.x,sub_dest_rect.y);
+      //printf("      Output - PSAKHIS sub_screen_rect: %dx%d %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
+     }
+    } 
     if(!sub_dest_rect.h) // May occur with small yscale values in certain cases, so prevent triggering an assert()
      sub_dest_rect.h = 1;
 
-    // Blit here!    
+     // Blit here!    
     SubBlit(msurface, sub_src_rect, sub_dest_rect, InterlaceField);
 
     last_y = y;
@@ -2367,8 +2561,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
     if(y != (src_rect.y + src_rect.h))
     {
      last_width = LineWidths[y];
-    }
-   } 
+    }    
   }
  }
 }
