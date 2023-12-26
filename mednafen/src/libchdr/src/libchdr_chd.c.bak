@@ -43,13 +43,13 @@
 #include <string.h>
 #include <time.h>
 
-#include "../include/libchdr/chd.h"
-#include "../include/libchdr/cdrom.h"
-#include "../include/libchdr/flac.h"
-#include "../include/libchdr/huffman.h"
+#include <libchdr/chd.h>
+#include <libchdr/cdrom.h>
+#include <libchdr/flac.h>
+#include <libchdr/huffman.h>
 
-#include <mednafen/lzma/include/LzmaEnc.h>
-#include <mednafen/lzma/include/LzmaDec.h>
+#include "LzmaEnc.h"
+#include "LzmaDec.h"
 #if defined(__PS3__) || defined(__PSL1GHT__)
 #define __MACTYPES__
 #endif
