@@ -28,6 +28,8 @@
 namespace MDFN_IEN_PCE_FAST
 {
 
+static const int width_list[4] = {256,      341,      512,      512 }; // SLK
+
 static uint32 systemColorMap32[2][512];	// 0 = normal, 1 = strip colorburst
 static uint32 amask;    // Alpha channel maskaroo
 static uint32 userle; // User layer enable.
@@ -176,6 +178,14 @@ static INLINE void SetVCECR(uint8 V)
   for(int x = 0; x < 512; x++)
    FixPCache(x);
  }
+ 
+ // psakhis
+ printf("PCE_FAST - VCE - dot_clock change to: %d\n",vce.dot_clock);
+ resolution_to_change_w = width_list[vce.dot_clock];
+ resolution_to_change_h = 240;
+ resolution_to_change = true;
+ // psakhis end
+ 
 }
 
 static unsigned int frame_counter;
