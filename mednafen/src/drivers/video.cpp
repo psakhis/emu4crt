@@ -117,7 +117,8 @@ enum
  RES_STATIC = 0,
  RES_NATIVE = 1,
  RES_SUPER = 2,
- RES_SWITCHRES = 3 //psakhis
+ RES_SWITCHRES = 3, //psakhis
+ RES_MISTER = 4 //psakhis
 };
 // SLK - end
 
@@ -202,6 +203,7 @@ static const MDFNSetting_EnumList Resolution_Switch[] =
  { "native", RES_NATIVE, "Native resolutions", gettext_noop("Use emulated system native resolution for output") },
  { "super", RES_SUPER, "Super resolutions", gettext_noop("Use super resolutions for output") },
  { "switchres", RES_SWITCHRES, "Switchres 2", gettext_noop("Use switchres 2 for output") }, //psakhis
+ { "mister", RES_MISTER, "MiSTer", gettext_noop("Use MiSTer for output") }, //psakhis
  { NULL, 0 }
 };
 // SLK - end
@@ -1425,6 +1427,14 @@ void Video_Sync(MDFNGI *gi)
    	video_settings.yres = resolution_to_change_h;
    }*/
   }  
+  if(_resolution_switch == RES_MISTER) // MiSTer Res
+  {
+   use_mister = true;
+   printf("  VIDEO - Video_Sync - apply MISTER resolution settings - set to %dx%d\n",resolution_to_change_w,resolution_to_change_h);
+   video_settings.xres = resolution_to_change_w;  // for fullscreen mode  
+   video_settings.yres = resolution_to_change_h;  // for windowed     
+  }
+  
   current_game_resolution_w = resolution_to_change_w; // bypass next changes
   current_game_resolution_h = resolution_to_change_h; // bypass next changes  
   
@@ -1468,18 +1478,19 @@ void Video_Sync(MDFNGI *gi)
  if(screen_dest_rect.w > 16383 || screen_dest_rect.h > 16383)
   throw MDFN_Error(0, _("Window size(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
 
- SDL_SetWindowFullscreen(window, 0);  
- SDL_PumpEvents();
- SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h); 
- SDL_PumpEvents();
- SDL_SetWindowPosition(window, winpos_x, winpos_y);
- winpos_applied = true;
- SDL_PumpEvents();
- SDL_SetWindowTitle(window, (gi && gi->name.size()) ? gi->name.c_str() : "Mednafen");
- SDL_PumpEvents();
- SDL_ShowWindow(window);
- SDL_PumpEvents(); 
-
+ if(!video_settings.fullscreen) { //psakhis
+   SDL_SetWindowFullscreen(window, 0);  
+   SDL_PumpEvents();
+   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h); 
+   SDL_PumpEvents();
+   SDL_SetWindowPosition(window, winpos_x, winpos_y);   
+   winpos_applied = true;
+   SDL_PumpEvents();
+   SDL_SetWindowTitle(window, (gi && gi->name.size()) ? gi->name.c_str() : "Mednafen");
+   SDL_PumpEvents();
+   SDL_ShowWindow(window);
+   SDL_PumpEvents(); 
+}
  //
  if(0)
  {
@@ -1713,21 +1724,21 @@ void Video_Sync(MDFNGI *gi)
   int old_mousey = 0;
   SDL_GetGlobalMouseState(&old_mousex, &old_mousey);
 #endif
-
+  
   if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());
    goto TryWindowed;
-  }    
-
+  }       
+  SDL_ShowWindow(window); //psakhis 
   //psakhis - delegate first switch to switchres
  if (use_switchres) 
  {
-   Video_SetSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, gi->rotated);
-   Video_BlitRefresh();  
+   Video_SetSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, gi->rotated);   
+   Video_BlitRefresh();     
  }
  else
- {	
+ {	   
    sr_x_scale = (double) mode.w / resolution_to_change_w; //psakhis - scale corrected 
    sr_y_scale = (double) mode.h / resolution_to_change_h; //psakhis - scale corrected
 

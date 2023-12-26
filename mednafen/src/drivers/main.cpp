@@ -15,8 +15,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+    
 #include "main.h"
 #include <SDL_revision.h>
+
+#include <mednafen/mister/mister.h> //psakhis
 
 #ifdef WIN32
  #include <mednafen/win32-common.h>
@@ -63,6 +66,13 @@
 #include <mednafen/string/string.h>
 #include <mednafen/file.h>
 #include <mednafen/AtomicFIFO.h>
+
+
+
+
+static int PoC_start = 0; //psakhis mister
+static std::vector<uint8> tmp_buffer; //psakhis mister
+static uint32 size_tmp_buffer = 0; //psakhis mister   
 
 static bool SuppressErrorPopups;	// Set from env variable "MEDNAFEN_NOPOPUPS"
 
@@ -144,7 +154,12 @@ static const MDFNSetting DriverSettings[] =
   { "input.joystick.axis_threshold", MDFNSF_NOFLAGS, gettext_noop("Analog axis binary press detection threshold."), gettext_noop("Threshold for detecting a digital-like \"button\" press on analog axis, in percent."), MDFNST_FLOAT, "75", "0", "100" },
   { "input.autofirefreq", MDFNSF_NOFLAGS, gettext_noop("Auto-fire frequency."), gettext_noop("Auto-fire frequency = GameSystemFrameRateHz / (value + 1)"), MDFNST_UINT, "3", "0", "1000" },
   { "input.ckdelay", MDFNSF_NOFLAGS, gettext_noop("Dangerous key action delay."), gettext_noop("The length of time, in milliseconds, that a button/key corresponding to a \"dangerous\" command like power, reset, exit, etc. must be pressed before the command is executed."), MDFNST_UINT, "0", "0", "99999" },
-
+//psakhis
+  { "mister.host", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer ip."), NULL, MDFNST_STRING, "192.168.137.136" },
+  { "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
+  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4)"), NULL, MDFNST_BOOL, "0"},
+  { "mister.vsync", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer vcount line for sync with nogpu. 0 for automatic vsync."), NULL, MDFNST_UINT, "0", "0", "240" },
+//end psakhis
   { "netplay.host", MDFNSF_NOFLAGS, gettext_noop("Server hostname."), NULL, MDFNST_STRING, "netplay.fobby.net" },
   { "netplay.port", MDFNSF_NOFLAGS, gettext_noop("Server port."), NULL, MDFNST_UINT, "4046", "1", "65535" },
   { "netplay.console.font", MDFNSF_NOFLAGS, gettext_noop("Font for netplay chat console."), NULL, MDFNST_ENUM, "9x18", NULL, NULL, NULL, NULL, FontSize_List },
@@ -247,6 +262,7 @@ void MakeDebugSettings(void)
 
 static MThreading::Thread* GameThread;
 static MThreading::Thread* SwitchThread; //psakhis - sniffer changes
+static MThreading::Thread* AudioThread; //psakhis - audio 
 
 static struct
 {
@@ -263,6 +279,7 @@ static unsigned VTRotated = 0;
 static bool VTSSnapshot = false;
 static MThreading::Sem* VTWakeupSem;
 static MThreading::Sem* STWakeupSem; //psakhis - semaphore when change resolution occurs on main loop
+static MThreading::Sem* AUWakeupSem; //psakhis - semaphore when audio buffer is ready
 static MThreading::Mutex *VTMutex = NULL, *EVMutex = NULL;
 static MThreading::Mutex *StdoutMutex = NULL;
 
@@ -1057,13 +1074,18 @@ int volatile GameThreadRun = 0;
 //psakhis
 static volatile unsigned NeedResolutionRefresh = 0; // trigger refresh video blitter on main thread if resolution changes
 static int SwitchLoop(void *arg); //sniffer changes
+static int AudioLoop(void *arg); //audio on another thread (sync on video)
 int volatile SwitchThreadRun = 0;
+int volatile AudioThreadRun = 0;
+int volatile AudioThreadACK = 0;
+static int16 *BufferAudioThread = nullptr;
+static uint32 CountAudioThread = 0;	
 //psakhis end
 static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count);
 
 static bool sound_active;	// true if sound is enabled and initialized
 
-
+static MiSTer mister; //psakhis mister
 static EmuRealSyncher ers;
 
 static bool autosave_load_error = false;
@@ -1217,13 +1239,27 @@ static void CloseGame(void)
 	}
 	//psakhis
 	SwitchThreadRun = 0; 
+	AudioThreadRun = 0; 
 	
 	MThreading::Sem_Post(STWakeupSem); //close thread safetly	
+	MThreading::Sem_Post(AUWakeupSem); //close thread safetly	
 	if(SwitchThread) 
 	{
 	 MThreading::Thread_Wait(SwitchThread, NULL);
 	 SwitchThread = NULL;
+	}		
+	
+	if(AudioThread) 
+	{
+	 MThreading::Thread_Wait(AudioThread, NULL);
+	 AudioThread = NULL;
 	}
+	
+	if (use_mister)
+	{
+		mister.CmdClose();
+	}
+	
 	//psakhis end
 	//
 	//
@@ -1305,14 +1341,16 @@ void DebuggerFudge(void)
  }
 }
 
+
 static int GameLoop(void *arg)
 {
 	while(GameThreadRun)
-	{		 	 	  
+	{		 
+	 mister.SetStartEmulate();	 	 	   	 	 
          int16 *sound;
          int32 ssize;
          bool fskip;
-        
+         
 	 /* If we requested a new video mode, wait until it's set before calling the emulation code again.
 	 */
 	 while(NeedVideoSync)
@@ -1332,29 +1370,29 @@ static int GameLoop(void *arg)
 	 fskip &= MDFN_GetSettingB("video.frameskip");
 	 fskip &= !(pending_ssnapshot || pending_snapshot || pending_save_state || pending_save_movie || NeedFrameAdvance);
 	 fskip |= (bool)NoWaiting;
-
-	 //printf("fskip %d; NeedFrameAdvance=%d\n", fskip, NeedFrameAdvance);
+		
+	 //printf("fskip %d; NeedFrameAdvance=%d %d\n", fskip, NeedFrameAdvance, NoWaiting);
 
 	 NeedFrameAdvance = false;
 	 //
 	 //
 	 SoftFB[SoftFB_BackBuffer].lw[0] = ~0;
-
+ 	 
 	 //
 	 //
 	 //
 	 EmulateSpecStruct espec;
 
-         espec.surface = SoftFB[SoftFB_BackBuffer].surface.get();
-         espec.LineWidths = SoftFB[SoftFB_BackBuffer].lw.get();
+         espec.surface = SoftFB[SoftFB_BackBuffer].surface.get();        
+         espec.LineWidths = SoftFB[SoftFB_BackBuffer].lw.get();        
 	 espec.skip = fskip;
 	 espec.soundmultiplier = CurGameSpeed;
+	
 	 espec.NeedRewind = DNeedRewind;
-
  	 espec.SoundRate = Sound_GetRate();
-	 espec.SoundBuf = Sound_GetEmuModBuffer(&espec.SoundBufMaxSize);
+	 espec.SoundBuf = Sound_GetEmuModBuffer(&espec.SoundBufMaxSize);	
  	 espec.SoundVolume = (double)MDFN_GetSettingUI("sound.volume") / 100;
-
+	 
 	 if(MDFN_UNLIKELY(StateFuzzTest))
 	 {
 	  EmulateSpecStruct estmp = espec;
@@ -1365,10 +1403,9 @@ static int GameLoop(void *arg)
 	  MDFNSS_LoadSM(&state0, false, MDFNSS_FUZZ_RANDOM);
 	  MDFNI_Emulate(&estmp);
 	  state0.rewind();
-	  MDFNSS_LoadSM(&state0);
-	  printf("LOAD Sergi\n");
-	 }
-
+	  MDFNSS_LoadSM(&state0);	 
+	 } 	 	  	  	 
+ 	  	 
 	 if(MDFN_UNLIKELY(StateRCTest))
 	 {
 	  // Note: Won't work correctly with modules that do mid-sync.
@@ -1386,8 +1423,8 @@ static int GameLoop(void *arg)
 	  state0.rewind();
 	  MDFNSS_LoadSM(&state0);
 	  MDFNI_Emulate(&espec);
-	  MDFNSS_SaveSM(&state2);
-
+	  MDFNSS_SaveSM(&state2);                                             	
+          
 	  if(!(state1.map_size() == state2.map_size() && !memcmp(state1.map() + 32, state2.map() + 32, state1.map_size() - 32)))
 	  {
 	   FileStream sd0("/tmp/sdump0", FileStream::MODE_WRITE);
@@ -1401,17 +1438,18 @@ static int GameLoop(void *arg)
 	   abort();
 	  }
 	 }
-	 else
-          MDFNI_Emulate(&espec);
-          
+	 else 
+          MDFNI_Emulate(&espec);                   
+         
+         mister.SetEndEmulate();
+
 	 //psakhis: activate change on switch thread 	 
 	 if (!NeedResolutionChange && resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
 	  NeedResolutionChange++; //redundant only if not changing 
 	  MThreading::Sem_Post(STWakeupSem);	
 	  resolution_to_change = false;	  	  
 	 }
-	 //psakhis end	 
-	 	 	 
+	 //psakhis end	 	 
 	 if(MDFN_UNLIKELY(StateSLSTest))
 	 {
 	  MemoryStream orig_state(524288);
@@ -1434,26 +1472,28 @@ static int GameLoop(void *arg)
 	   //assert(orig_state.map_size() == new_state.map_size() && !memcmp(orig_state.map() + 32, new_state.map() + 32, orig_state.map_size() - 32));
 	   abort();
 	  }
-	 }	 
+	 }
+  	 
 	 ers.AddEmuTime((espec.MasterCycles - espec.MasterCycles_DriverProcessed) / CurGameSpeed);
-
+	
 	 SoftFB[SoftFB_BackBuffer].rect = espec.DisplayRect;
 	 SoftFB[SoftFB_BackBuffer].field = espec.InterlaceOn ? espec.InterlaceField : -1;
 
 	 sound = espec.SoundBuf + (espec.SoundBufSize_DriverProcessed * CurGame->soundchan);
 	 ssize = espec.SoundBufSize - espec.SoundBufSize_DriverProcessed;
+		 	
 	 //
 	 //
 	 //
 
+   	
 	 FPS_IncVirtual(espec.MasterCycles);
 	 if(!fskip)
-	  FPS_IncDrawn();
-
-
+	  FPS_IncDrawn();        
+        
 	 {
 	  bool do_flip = false;
-
+  
 	  do
 	  {
  	   if(fskip && ((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused))
@@ -1467,11 +1507,14 @@ static int GameLoop(void *arg)
 	    //	Will fail spectacularly if there is no previous successful frame.  BOOOOOOM.  (But there always should be, especially since we initialize some
   	    //   of the video buffer and rect structures during startup)
 	    //
-            MDFND_Update(SoftFB_BackBuffer ^ 1, sound, ssize);
+            MDFND_Update(SoftFB_BackBuffer ^ 1, sound, ssize);         
 	   }
 	   else
             do_flip = MDFND_Update(fskip ? -1 : SoftFB_BackBuffer, sound, ssize);
-
+	
+	
+   	
+		
 	   FPS_UpdateCalc();
 
 	   Netplay_GT_CheckPendingLine();
@@ -1485,14 +1528,15 @@ static int GameLoop(void *arg)
 	  } while(((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused) && GameThreadRun);
 	  SoftFB_BackBuffer ^= do_flip;
 	 }
-	}
-
+	
+	}	
+	
 	return(1);
 }   
 
 //psakhis: implements switches on a separate thread with semaphore activator from main loop thread
 static int SwitchLoop(void *arg)
-{
+{		
 	while(SwitchThreadRun) {	
 	 //printf("SWITCH - Sleeping - Waiting for the next change\n");
 	 if (MThreading::Sem_Wait(STWakeupSem)) { //activator semaphore from main loop	  	 	
@@ -1509,10 +1553,90 @@ static int SwitchLoop(void *arg)
 	      NeedResolutionChange--;	    	      
 	    }	   	     	    
 	  }	                                     
-	 }                                      	                                                                                                         		
-	} 	 	                 	 	        							 		 	                                                                                                                                                                                	 	 
+	 }                                      	                                                                                                         			 	 
+	} 	 	                 	 	        							 		 	                                                                                                                                                                                	 	 	
 	
 	return 1;
+}
+//end psakhis
+
+//psakhis: implements audio on another thread to sync on video
+static int AudioLoop(void *arg)
+{		
+	while(AudioThreadRun) 
+	{		 
+		if (MThreading::Sem_Wait(AUWakeupSem)) 
+	 	{ 	 
+	 		AudioThreadACK = 1;	
+	 			 					 		
+ 			int16 *Buffer = BufferAudioThread;
+			uint32 Count = CountAudioThread;		
+			
+	 		if(Count)
+	 		{	 		 			  
+				  if(ffnosound && CurGameSpeed != 1)
+				  {
+				   for(uint32 x = 0; x < Count * CurGame->soundchan; x++)
+				    Buffer[x] = 0;
+				  }
+				  //
+				  //
+				  //
+				  const uint32 cw = Sound_CanWrite();
+				  bool NeedETtoRT = (Count >= (cw * 0.95));
+				
+				  if(NoWaiting && Count > cw)
+				  {  	
+				   //printf("NW C to M; count=%d, max=%d\n", Count, max);
+				   Count = cw;
+				  }
+				  else if(MDFNDnetplay)
+				  {
+				   //
+				   // Cheap code to fix sound buffer underruns due to accumulation of time error during netplay.
+				   //
+				   uint32 dw = 0;
+				
+				   if(cw >= (Count * 7 / 4)) // || cw >= Sound_BufferSize())
+				    dw = cw - std::min<uint32>(cw, Count);
+				
+				   if(dw)
+				   {
+				    int16 zbuf[128 * 2];	// *2 for stereo case.
+				
+				    //printf("DW: %u\n", dw);
+				
+				    memset(zbuf, 0, sizeof(zbuf));
+				
+				    while(dw != 0)
+				    {
+				     uint32 wti = std::min<int>(128, dw);
+				     Sound_Write(zbuf, wti);
+				     dw -= wti;
+				    }
+				    NeedETtoRT = true;
+				   }
+				  }	
+				  		  
+				  Sound_Write(Buffer, Count);      	       	         	  					  
+				  if(NeedETtoRT)
+				   ers.SetETtoRT();				  
+			 }
+			 else
+			 {			 	
+			  	bool nothrottle = MDFN_GetSettingB("nothrottle");
+				
+			  	if(!NoWaiting && !nothrottle && GameThreadRun && !MDFNDnetplay)         
+			   	 ers.Sync();
+			   				   	
+			 }
+			 			
+			 AudioThreadACK = 0;	 
+		}
+			 
+      } 	 	                 	 	        							 		 	                                                                                                                                                                                	 	 	
+	
+      return 1;
 }
 //end psakhis
 
@@ -2336,6 +2460,7 @@ int main(int argc, char *argv[])
 
 	VTWakeupSem = MThreading::Sem_Create();
 	STWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for push changes changes from mainloop
+	AUWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for audio changes from mainloop
 	//
 	Video_Init();
 	//
@@ -2385,9 +2510,16 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
  	 //psakhis: create thread with semaphore for switches
 	 SwitchThreadRun = 1;
 	 SwitchThread = MThreading::Thread_Create(SwitchLoop, NULL, "MDFN Switch");
+
+ 	 //psakhis: create thread with semaphore for audio
+	 AudioThreadRun = 1;
+	 AudioThread = MThreading::Thread_Create(AudioLoop, NULL, "MDFN Audio");
 	 
 	 if(vt_affinity) 	 
 	  MThreading::Thread_SetAffinity(SwitchThread, vt_affinity); 
+	 
+	 if(vt_affinity)
+          MThreading::Thread_SetAffinity(AudioThread, vt_affinity);  
 	 //psakhis end
  
 	 //
@@ -2473,7 +2605,7 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	    const int vtr = VTReady.load(std::memory_order_acquire);	    
 
             if(vtr >= 0)       
-            {
+            {                         	
              BlitScreen(SoftFB[vtr].surface.get(), &SoftFB[vtr].rect, SoftFB[vtr].lw.get(), VTRotated, SoftFB[vtr].field, VTSSnapshot);
 
 	     // Set to -1 after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
@@ -2554,6 +2686,7 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 static uint32 last_btime = 0;
 static void UpdateSoundSync(int16 *Buffer, uint32 Count)
 {
+	
  if(Count)
  {
   if(ffnosound && CurGameSpeed != 1)
@@ -2568,7 +2701,7 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
   bool NeedETtoRT = (Count >= (cw * 0.95));
 
   if(NoWaiting && Count > cw)
-  {
+  {  	
    //printf("NW C to M; count=%d, max=%d\n", Count, max);
    Count = cw;
   }
@@ -2599,9 +2732,9 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
     NeedETtoRT = true;
    }
   }
-
-  Sound_Write(Buffer, Count);
-
+  
+  Sound_Write(Buffer, Count);      	       	         	  	
+   	
   if(NeedETtoRT)
    ers.SetETtoRT();
  }
@@ -2609,8 +2742,9 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
  {
   bool nothrottle = MDFN_GetSettingB("nothrottle");
 
-  if(!NoWaiting && !nothrottle && GameThreadRun && !MDFNDnetplay)
+  if(!NoWaiting && !nothrottle && GameThreadRun && !MDFNDnetplay)         
    ers.Sync();
+  
  }
 }
 
@@ -2633,9 +2767,14 @@ void Mednafen::MDFND_MidSync(EmulateSpecStruct *espec, const unsigned flags)
  {
   ers.AddEmuTime((espec->MasterCycles - espec->MasterCycles_DriverProcessed) / CurGameSpeed, false);
   espec->MasterCycles_DriverProcessed = espec->MasterCycles;
-  //
-  UpdateSoundSync(sbuf, scount);
-  espec->SoundBufSize_DriverProcessed += scount;
+  //     
+  
+  if (use_mister == false) //psakhis
+  {
+  	UpdateSoundSync(sbuf, scount);
+  	espec->SoundBufSize_DriverProcessed += scount;
+  }
+  
  }
  else
  {
@@ -2698,17 +2837,17 @@ static bool PassBlit(const int WhichVideoBuffer)
  return true;
 }
 
-
 //
 // Called from game thread.  Pass -1 for WhichVideoBuffer when the frame is skipped.
 //
 static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 {
  bool ret = false;
-
+  
  if(WhichVideoBuffer >= 0)
  {
-  Debugger_GT_Draw();
+   if (use_mister == false)  //psakhis	
+    Debugger_GT_Draw();
 
 #if 0
   // Wait if we're re-blitting an already blitted frame, such as done while in frame advance or debugger step mode.
@@ -2720,14 +2859,121 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
     return false;
   }
 #endif
-
+  	           
   //
   // Save any pending screen snapshots, save states, and movies before any potential calls to PassBlit().
   //
   MDFN_Surface* surface = SoftFB[WhichVideoBuffer].surface.get();
   MDFN_Rect* rect = &SoftFB[WhichVideoBuffer].rect;
-  int32* lw = SoftFB[WhichVideoBuffer].lw.get();
+  int32* lw = SoftFB[WhichVideoBuffer].lw.get();    
 
+ //psakhis mister  
+ 
+  if (use_mister)
+  {
+  	  	
+	  if (PoC_start == 0) 
+	  {   
+		mister.CmdInit(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingB("mister.lz4")); 
+		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingB("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
+		mister.CmdSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
+		PoC_start = 1;
+	  }  
+  
+	  if (resolution_to_change)
+	  {
+	  	resolution_to_change = false;
+	  	if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated))   
+	  	{
+			 mister.CmdSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
+			 current_game_resolution_w = resolution_to_change_w;
+			 current_game_resolution_h = resolution_to_change_h;						 
+		} 
+	  }
+         
+         //MDFN_printf(_("rect %d %d %d, %d lw %d\n"),rect->x,rect->w,rect->h,rect->y,lw[0]);  		      
+         
+         int line_width = rect->w;
+         
+         if (lw && lw[0] != ~0 && line_width == 0)
+           line_width = lw[0];
+                   
+	  if (line_width > 0 && rect->h > 0)
+	  {   
+		   mister.SetStartBlit();	
+		   const int32 pitchinpix = surface->pitchinpix;
+		   		   
+		   uint32_t totalPixels = current_game_resolution_w * current_game_resolution_h;
+		   
+		   uint32 sizeBuff = totalPixels * 3;       
+		  
+		   if (sizeBuff > size_tmp_buffer)
+		   {		   
+		     tmp_buffer.resize(sizeBuff);	//this fucking shit is so slow
+		     size_tmp_buffer = sizeBuff;      
+		   }
+		   
+		   if (current_game_resolution_h > 240) 
+		   {
+		   	totalPixels = totalPixels >> 1; // div2		   	
+		   } 
+		 		   		   
+		   uint32 tmp_inc = 0;      		   	  		   
+		   uint32 tmp_pix = 0;
+		   //rgb			   		   		  		   	  			   		   		    
+		   for(int y = mister.GetField(); y < rect->h; y++)
+		   {   	 		   			   			   	 	 
+		  	line_width = rect->w;	
+		        int x_base = rect->x;
+		        if(lw && lw[0] != ~0)         	//ojo pce rtype 341x232
+		          line_width = lw[y + rect->y]; 	
+		        
+		        if (line_width > current_game_resolution_w)
+		          line_width = current_game_resolution_w;
+		         
+		  	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
+		        {
+		   		int r, g, b;
+		   
+		        	if(surface->format.opp == 2)
+		         	 surface->format.DecodeColor(surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
+		        	else
+		         	 surface->format.DecodeColor(surface->pixels[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
+		
+		        	tmp_buffer[tmp_inc] = b;
+		        	tmp_buffer[tmp_inc+1] = g;
+		        	tmp_buffer[tmp_inc+2] = r;
+		        	tmp_inc += 3;    
+		        	tmp_pix++;    	
+		        	//printf("RGB[%d]:%02hhX %02hhX %02hhX ",x,r,g,b);
+		        	
+		        	if (tmp_pix >= totalPixels)
+		        	 break;
+		        }		        
+     		        if (tmp_pix >= totalPixels)
+		         break;		        		        
+		        
+		        if (current_game_resolution_h > 240) y++; 
+		   }
+		    
+		   //MDFN_printf(_("rect %d %d %d, %d lw %d (tmp_inc %d) \n"),rect->x,rect->w,rect->h,rect->y,line_width,tmp_inc);  		      
+		   				 
+		   if (AudioThreadACK != 1)
+		   {      
+			   BufferAudioThread = Buffer;   
+			   CountAudioThread = Count;    
+			   MThreading::Sem_Post(AUWakeupSem);        
+		   }       
+		   mister.CmdBlit((char *)&tmp_buffer[0], MDFN_GetSettingI("mister.vsync"));
+		   mister.SetEndBlit();  		   
+		 
+		   mister.Sync();
+	  
+	
+   	  }
+   }	   
+ //end psakhis mister
+  	   		  
   if(pending_snapshot)
    MDFNI_SaveSnapshot(surface, rect, lw);
 
@@ -2738,16 +2984,18 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
    MDFNI_SaveMovie(NULL, surface, rect, lw);
 
   pending_save_movie = pending_snapshot = pending_save_state = false;
+  
  }
 
  if(false == sc_blit_timesync)
  {
   //puts("ABBYNORMAL");
   ret |= PassBlit(WhichVideoBuffer);
- }
-
- UpdateSoundSync(Buffer, Count);
-
+ } 
+ 
+ if (use_mister == false)  //psakhis
+   UpdateSoundSync(Buffer, Count); 
+  
  GameThread_HandleEvents();
  Input_Update();
 
@@ -2772,4 +3020,5 @@ void Mednafen::MDFND_SetMovieStatus(StateStatusStruct *status) noexcept
 {
  SendCEvent(CEVT_SET_MOVIE_STATUS, status, NULL);
 }
+
 

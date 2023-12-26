@@ -162,6 +162,8 @@ include compress/Makefile.am.inc
 include hash/Makefile.am.inc
 include lzma/Makefile.am.inc
 include libchdr/Makefile.am.inc
+include lz4/Makefile.am.inc
+include mister/Makefile.am.inc
 
 if HAVE_EXTERNAL_LZO2
 mednafen_LDADD		+=	@LZO2_LIBS@
@@ -191,9 +193,10 @@ endif
 
 if HAVE_EXTERNAL_TRIO
 mednafen_LDADD		+=	@TRIO_LIBS@
+DEFS			+=	@TRIO_CFLAGS@
 else
 include trio/Makefile.am.inc
 endif
 
-mednafen_LDADD		+= 	@FLAC_LIBS@ @ZLIB_LIBS@ @LIBINTL@ @LIBICONV@
+mednafen_LDADD		+= 	@FLAC_LIBS@ @ZLIB_LIBS@ @LIBINTL@ @LIBICONV@ 
 

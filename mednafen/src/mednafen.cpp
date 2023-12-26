@@ -55,6 +55,7 @@
 #include "qtrecord.h"
 
 // SLK
+bool use_mister = false;
 bool use_native_resolution = false;
 bool use_super_resolution = false;
 bool use_switchres = false;
