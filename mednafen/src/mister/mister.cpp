@@ -574,7 +574,7 @@ void MiSTer::ReceiveBlitACK(void)
 	   {
 	   	if (ACKComplete == 0)
 	   	{				     
-		   	DataBufRecv.len = 12;
+		   	DataBufRecv.len = 13;
 		   	DataBufRecv.buf = bufferRecv;   		   		   				
 				       
 		   	rc = WSARecvFrom(sockfdOV, &DataBufRecv, 1, &BytesRecv, &Flags, (SOCKADDR *) &ServerAddr, &sizeof_ServerAddr, &OverlappedRecv, NULL);        
@@ -612,7 +612,19 @@ void MiSTer::ReceiveBlitACK(void)
   						frameEcho = frameUDP;
   						memcpy(&vcountEcho, &bufferRecv[4],2);
 						memcpy(&frameGPU, &bufferRecv[6],4);
-						memcpy(&vcountGPU, &bufferRecv[10],2);  		  	
+						memcpy(&vcountGPU, &bufferRecv[10],2);  
+						memcpy(&fpga_debug_bits, &bufferRecv[12],1); 
+			
+						bitByte bits;  
+						bits.byte = fpga_debug_bits;
+						fpga_vram_ready     = bits.u.bit0;
+						fpga_vram_end_frame = bits.u.bit1;
+						fpga_vram_synced    = bits.u.bit2;   
+						fpga_vga_frameskip  = bits.u.bit3;   
+						fpga_vga_vblank     = bits.u.bit4;   		
+						fpga_vga_f1         = bits.u.bit5;   
+						fpga_vram_pixels    = bits.u.bit6;
+			 			fpga_vram_queue     = bits.u.bit7;		  	
 						//printf("ReceiveBlitACK %d %d / %d %d \n", frameEcho, vcountEcho, frameGPU, vcountGPU);
 					}	
   				 				
@@ -641,7 +653,20 @@ void MiSTer::ReceiveBlitACK(void)
   			memcpy(&vcountEcho, &bufferRecv[4],2);
 			memcpy(&frameGPU, &bufferRecv[6],4);
 			memcpy(&vcountGPU, &bufferRecv[10],2);  		  	
-			//printf("ReceiveBlitACK %d %d / %d %d \n", frameEcho, vcountEcho, frameGPU, vcountGPU);
+			memcpy(&fpga_debug_bits, &bufferRecv[12],1); 
+			
+			bitByte bits;  
+			bits.byte = fpga_debug_bits;
+			fpga_vram_ready     = bits.u.bit0;
+			fpga_vram_end_frame = bits.u.bit1;
+			fpga_vram_synced    = bits.u.bit2;   
+			fpga_vga_frameskip  = bits.u.bit3;   
+			fpga_vga_vblank     = bits.u.bit4;   		
+			fpga_vga_f1         = bits.u.bit5;   
+			fpga_vram_pixels    = bits.u.bit6;
+ 			fpga_vram_queue     = bits.u.bit7;
+		 		  	
+			//printf("ReceiveBlitACK %d %d / %d %d / bits(%d%d%d%d%d%d%d%d)\n", frameEcho, vcountEcho, frameGPU, vcountGPU, fpga_vram_ready, fpga_vram_end_frame, fpga_vram_synced, fpga_vga_frameskip, fpga_vga_vblank, fpga_vga_f1, fpga_vram_pixels, fpga_vram_queue);
   		} 
   	}  		  	
   } while (len > 0 && frame != frameEcho);

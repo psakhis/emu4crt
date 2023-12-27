@@ -43,6 +43,22 @@
 #define MAX_BUFFER_HEIGHT 768
 #define MAX_LZ4_BLOCK   61440
 
+typedef union
+{
+  struct
+  {
+    unsigned char bit0 : 1;
+    unsigned char bit1 : 1;
+    unsigned char bit2 : 1;
+    unsigned char bit3 : 1;
+    unsigned char bit4 : 1;
+    unsigned char bit5 : 1;
+    unsigned char bit6 : 1;
+    unsigned char bit7 : 1;   
+  }u;
+   uint8_t byte;
+} bitByte;
+
 class MiSTer
 {
  public:
@@ -89,8 +105,19 @@ class MiSTer
  
  bool firstField = false;
  
+ //FPGA debug bits 
+ uint8_t fpga_debug_bits = 0;
+ uint8_t fpga_vram_end_frame = 0;
+ uint8_t fpga_vram_ready = 0;
+ uint8_t fpga_vram_synced = 0;
+ uint8_t fpga_vga_frameskip = 0;
+ uint8_t fpga_vga_vblank = 0;
+ uint8_t fpga_vga_f1 = 0;
+ uint8_t fpga_vram_pixels = 0;
+ uint8_t fpga_vram_queue = 0;
+ 
  //UDP	
- char bufferRecv[12];
+ char bufferRecv[13];
  struct sockaddr_in ServerAddr;  
  int sockfd; 
           
