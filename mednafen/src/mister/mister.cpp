@@ -18,7 +18,7 @@ void MiSTer::CmdClose(void)
    Send((char*)&buffer[0], 1);     		
 }
 
-void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames)
+void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames, uint32_t sound_rate, uint8_t sound_chan)
 { 
    char buffer[4];
    
@@ -155,19 +155,9 @@ void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames
    printf("[DEBUG] Sending CMD_INIT...\n");
    
    buffer[0] = CMD_INIT;  
-   buffer[1] = (lz4_frames) ? 1 : 0; //0-RAW or 1-LZ4 ;    
-      
-   if (lz4_frames > 0)
-   {   	    
-   	uint16_t blockSize = 8192;
-   	buffer[2] = (uint16_t) blockSize & 0xff;
-        buffer[3] = (uint16_t) blockSize >> 8;       
-   }  
-   else
-   {
-   	buffer[2] = 0x00;
-   	buffer[3] = 0x00;
-   }      
+   buffer[1] = (lz4_frames) ? 1 : 0; //0-RAW or 1-LZ4 ;
+   buffer[2] = (sound_rate == 22050) ? 1 : (sound_rate == 44100) ? 2 : (sound_rate == 48000) ? 3 : 0;  
+   buffer[3] = sound_chan;         
    
    Send(&buffer[0], 4);     
    
@@ -185,6 +175,7 @@ void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames
    frameGPU = 0;
    vcountGPU = 0;  
    interlaced = 0;
+   fpga_audio = 0;
    firstField = false;
 }
 
@@ -254,7 +245,7 @@ void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
 	   memcpy(&buffer[21],&udp_vend,sizeof(udp_vend));
 	   memcpy(&buffer[23],&udp_vtotal,sizeof(udp_vtotal));
 	   memcpy(&buffer[25],&udp_interlace,sizeof(udp_interlace));    
-	   Send(&buffer[0], 27);  
+	   Send(&buffer[0], 26);  
    }
    
      
@@ -296,6 +287,25 @@ void MiSTer::CmdBlit(char *bufferFrame, uint16_t vsync)
    else
     SendLZ4(&bufferFrame[0], bufferSize, blockSize); 	       
        
+}
+
+void MiSTer::CmdAudio(const void *bufferFrame, uint32_t sizeSound, uint8_t soundchan)
+{
+   if (fpga_audio == 0)
+    return;
+    	
+   char buffer[3];      
+   buffer[0] = CMD_AUDIO;
+     
+   uint16_t bytesSound = sizeSound * soundchan * 2;
+        
+   memcpy(&buffer[1], &bytesSound, sizeof(bytesSound));      
+                         	   	    
+   Send(&buffer[0], 3);                   
+   const uint8_t *data_in = (const uint8_t *)bufferFrame;         
+   
+   SendMTU((char *) &data_in[0], bytesSound, 1472); 
+ 	              	
 }
 
 void MiSTer::SetStartEmulate(void)
@@ -385,7 +395,7 @@ void MiSTer::Sync()
   		{  	
   			{
   				diffTime = GetVSyncDif(); 
-  				sleepTime = sleepTime + diffTime;  				  				
+  				sleepTime = sleepTime + (diffTime * 10);  				  				
   			}   					  		
   		}
   		
@@ -402,7 +412,7 @@ void MiSTer::Sync()
     
   tickLastSync = tick2;     
   
-  if (sleepTime < 0 || (sleepTime + 10000 < realSleepTime)) //something it's wrong
+ // if (sleepTime < 0 || (sleepTime + 10000 < realSleepTime)) //something it's wrong
    printf("Frame %d Sleep prev=%d/final=%d/real=%d (frameTime=%d ellapsed=%d blitTime=%d difGPU=%d emulationTime=%d) vsync=%d/%d\n", frame, prevSleepTime, sleepTime, realSleepTime, frameTime, elapsedTime, blitTime, diffTime, avgEmulationTime, vsync_auto, vcountGPU);	      
 
 }
@@ -545,8 +555,7 @@ void MiSTer::SendLZ4(char *buffer, int bytes_to_send, int block_size)
 	memcpy((char *)&inp_ptr[0], buffer + offset, chunk_size);
 		 
 	const uint16_t c_size = LZ4_compress_fast_continue(lz4_stream, inp_ptr, (char *)&m_fb_compressed[2], bytes_this_chunk, sizeof(m_fb_compressed), 1);
-	//const uint16_t c_size = LZ4_compress_HC_continue(lz4_streamHC, inp_ptr, (char *)&m_fb_compressed[2], bytes_this_chunk, sizeof(m_fb_compressed));
-	
+	//const uint16_t c_size = LZ4_compress_HC_continue(lz4_streamHC, inp_ptr, (char *)&m_fb_compressed[2], bytes_this_chunk, sizeof(m_fb_compressed));	
 	uint16_t *c_size_ptr = (uint16_t *)&m_fb_compressed[0];
 	*c_size_ptr = c_size;
 
@@ -623,7 +632,7 @@ void MiSTer::ReceiveBlitACK(void)
 						fpga_vga_frameskip  = bits.u.bit3;   
 						fpga_vga_vblank     = bits.u.bit4;   		
 						fpga_vga_f1         = bits.u.bit5;   
-						fpga_vram_pixels    = bits.u.bit6;
+						fpga_audio          = bits.u.bit6;
 			 			fpga_vram_queue     = bits.u.bit7;		  	
 						//printf("ReceiveBlitACK %d %d / %d %d \n", frameEcho, vcountEcho, frameGPU, vcountGPU);
 					}	
@@ -663,7 +672,7 @@ void MiSTer::ReceiveBlitACK(void)
 			fpga_vga_frameskip  = bits.u.bit3;   
 			fpga_vga_vblank     = bits.u.bit4;   		
 			fpga_vga_f1         = bits.u.bit5;   
-			fpga_vram_pixels    = bits.u.bit6;
+			fpga_audio          = bits.u.bit6;
  			fpga_vram_queue     = bits.u.bit7;
 		 		  	
 			//printf("ReceiveBlitACK %d %d / %d %d / bits(%d%d%d%d%d%d%d%d)\n", frameEcho, vcountEcho, frameGPU, vcountGPU, fpga_vram_ready, fpga_vram_end_frame, fpga_vram_synced, fpga_vga_frameskip, fpga_vga_vblank, fpga_vga_f1, fpga_vram_pixels, fpga_vram_queue);

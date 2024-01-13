@@ -35,9 +35,10 @@
 #define CMD_CLOSE 1
 #define CMD_INIT 2
 #define CMD_SWITCHRES 3
-#define CMD_BLIT 4
+#define CMD_AUDIO 4
 #define CMD_GET_STATUS 5
 #define CMD_BLIT_VSYNC 6
+
 
 #define MAX_BUFFER_WIDTH 1024
 #define MAX_BUFFER_HEIGHT 768
@@ -66,9 +67,10 @@ class MiSTer
  ~MiSTer(); 
 
  void CmdClose(void);
- void CmdInit(const char* mister_host, short mister_port, bool lz4_frames);
+ void CmdInit(const char* mister_host, short mister_port, bool lz4_frames, uint32_t sound_rate, uint8_t sound_chan);
  void CmdSwitchres(int w, int h, double vfreq, int orientation);
  void CmdBlit(char *bufferFrame, uint16_t vsync); 
+ void CmdAudio(const void *bufferFrame, uint32_t sizeSound, uint8_t soundchan);
  
  void SetStartEmulate(void); //TS before frame emulation
  void SetEndEmulate(void); //TS after frame emulation 
@@ -104,7 +106,7 @@ class MiSTer
  uint16_t vcountGPU = 0;
  
  bool firstField = false;
- 
+   
  //FPGA debug bits 
  uint8_t fpga_debug_bits = 0;
  uint8_t fpga_vram_end_frame = 0;
@@ -113,8 +115,8 @@ class MiSTer
  uint8_t fpga_vga_frameskip = 0;
  uint8_t fpga_vga_vblank = 0;
  uint8_t fpga_vga_f1 = 0;
- uint8_t fpga_vram_pixels = 0;
- uint8_t fpga_vram_queue = 0;
+ uint8_t fpga_audio = 0;
+ uint8_t fpga_vram_queue = 0; 
  
  //UDP	
  char bufferRecv[13];
