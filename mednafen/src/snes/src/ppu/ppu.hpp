@@ -111,7 +111,7 @@ public:
 
   alwaysinline bool interlace() const { return display.interlace; }
   alwaysinline bool overscan()  const { return display.overscan;  }
-  alwaysinline bool hires()     const { return (regs.pseudo_hires || regs.bg_mode == 5 || regs.bg_mode == 6); }
+  alwaysinline bool hires()     const { return (regs.pseudo_hires || regs.bg_mode == 5 || regs.bg_mode == 6); } 
 
   uint16 light_table_b[16][32];
   uint16 light_table_gr[16][32 * 32];

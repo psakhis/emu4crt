@@ -14,7 +14,7 @@ class EmuRealSyncher
  void AddEmuTime(const int64 zetime, bool frame_end = true);
 
  void SetETtoRT(void);
-
+ 
  private:
  int64 EmuClock;
 
@@ -29,5 +29,6 @@ class EmuRealSyncher
  int64 AvgTimePerFrame; // 56.8
 
  int64 tmp_frame_accumtime;
+ 
 };
 

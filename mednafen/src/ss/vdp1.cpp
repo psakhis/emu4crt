@@ -22,7 +22,7 @@
 // TODO: Draw timing for small lines(somewhere between 2 and 15 pixels wide) on the VDP1 seems weird; investigate further
 // before making timing changes to the drawing code.
 
-// TODO: Draw timing for (large) primitives should be about 20% higher.
+// TODO: Investigate and more accurately model the 10-20% draw overhead currently approximated in AdjustDrawTiming().
 
 // TODO: Draw timing for shrunken(even just slightly) sprite lines with HSS disabled should be 100% higher.
 
@@ -1015,7 +1015,7 @@ void SetHBVB(const sscpu_timestamp_t event_timestamp, const bool new_hb_status, 
    if(!(FBCR & FBCR_FCM) || (FBManualPending && !(FBCR & FBCR_FCT)))
    {
     if(TVMR & TVMR_ROTATE)
-     FBVBErasePending = true;    
+     FBVBErasePending = true;
     else
      EraseYCounter = EraseParams.y_start;
    }

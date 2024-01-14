@@ -78,7 +78,7 @@ class SDL_to_MDFN_Surface_Wrapper : public MDFN_Surface
   pixels16 = NULL;
   pixels = NULL;
 
-  if(ss->format->BitsPerPixel == 16)
+  if(ss->format->BytesPerPixel == 2)
   {
    pixels16 = (uint16*)ss->pixels;
    pitchinpix = ss->pitch >> 1;
@@ -224,19 +224,18 @@ static const MDFNSetting GlobalVideoSettings[] =
 
  { "video.force_bbclear", MDFNSF_NOFLAGS, gettext_noop("Force backbuffer clear before drawing."), gettext_noop("Enabling may result in a noticeable negative impact on performance with the \"softfb\" video driver, and with the \"opengl\" video driver on underpowered GPUs."), MDFNST_BOOL, "0" },
 
- { "video.glvsync", MDFNSF_NOFLAGS, gettext_noop("Attempt to synchronize OpenGL page flips to vertical retrace period."), 
-			       gettext_noop("Note: Additionally, if the environment variable \"__GL_SYNC_TO_VBLANK\" does not exist, then it will be created and set to the value specified for this setting.  This has the effect of forcibly enabling or disabling vblank synchronization when running under Linux with NVidia's drivers."),
-				MDFNST_BOOL, "1" },
+ { "video.glvsync", MDFNSF_NOFLAGS, gettext_noop("Attempt to synchronize OpenGL page flips to vertical retrace period."), NULL, MDFNST_BOOL, "1" },
 
  { "video.disable_composition", MDFNSF_NOFLAGS, gettext_noop("Attempt to disable desktop composition."), gettext_noop("Currently, this setting only has an effect on Windows Vista and Windows 7(and probably the equivalent server versions as well)."), MDFNST_BOOL, "1" },
+
  // SLK - admit new parameter
- { "video.resolution_switch", MDFNSF_NOFLAGS, gettext_noop("Video resolution switch (0, native, super or switchres)."), NULL, MDFNST_ENUM, "0", NULL, NULL, NULL, NULL, Resolution_Switch},
+ { "video.resolution_switch", MDFNSF_NOFLAGS, gettext_noop("Video resolution switch (0, native, super, switchres or mister)."), NULL, MDFNST_ENUM, "0", NULL, NULL, NULL, NULL, Resolution_Switch},
  // SLK - end
 
  // Psakhis - experimentntal BFI
  // { "video.bfi", MDFNSF_NOFLAGS, gettext_noop("Experimental BFI."), gettext_noop("0, 1, 2"), MDFNST_INT, "0", "0", "2" },
  // Psakhis - end
-
+ 
  { NULL }
 };
 
@@ -313,10 +312,10 @@ static const MDFNSetting_EnumList Shader_List[] =
     { "ipynotxsharper", SHADER_IPYNOTXSHARPER, 	gettext_noop("Sharper version of \"ipynotx\".") },
 
     { "goat", 		SHADER_GOAT, 		gettext_noop("Simple approximation of a color TV CRT look."), gettext_noop("Intended for fullscreen modes with a vertical resolution of around 1000 to 1500 pixels.  Doesn't simulate halation and electron beam energy distribution nuances.") },
-    
+
     //PSAKHIS
     { "gunlight", 	SHADER_GUNLIGHT, 	gettext_noop("Apply brightness post processing for gun games on TV CRT.") },
-
+    
     { NULL, 0 },
 };
 
@@ -345,10 +344,10 @@ void Video_MakeSettings(void)
 
  static const char *CSD_xscalefs = gettext_noop("Scaling factor for the X axis in fullscreen mode.");
  static const char *CSD_yscalefs = gettext_noop("Scaling factor for the Y axis in fullscreen mode.");
- static const char *CSDE_xyscalefs = gettext_noop("For this setting to have any effect, the \"<system>.stretch\" setting must be set to \"0\".");
+ static const char *CSDE_xyscalefs = gettext_noop("For this setting to have any effect, the \"\5<system>.stretch\" setting must be set to \"0\".");
 
  static const char *CSD_scanlines = gettext_noop("Enable scanlines with specified opacity.");
- static const char *CSDE_scanlines = gettext_noop("Opacity is specified in %; IE a value of \"100\" will give entirely black scanlines.\n\nNegative values are the same as positive values for non-interlaced video, but for interlaced video will cause the scanlines to be overlaid over the previous(if the video.deinterlacer setting is set to \"weave\", the default) field's lines.");
+ static const char *CSDE_scanlines = gettext_noop("Opacity is specified in %; IE a value of \"100\" will give entirely black scanlines.\n\nNegative values are the same as positive values for non-interlaced video, but for interlaced video will cause the scanlines to be overlaid over the previous(if the \"\5video.deinterlacer\" setting is set to \"weave\", the default) field's lines.");
 
  static const char *CSD_stretch = gettext_noop("Stretch to fill screen.");
  static const char *CSDvideo_settingsip = gettext_noop("Enable (bi)linear interpolation.");
@@ -357,7 +356,7 @@ void Video_MakeSettings(void)
  static const char *CSDE_special = gettext_noop("The destination rectangle is NOT altered by this setting, so if you have xscale and yscale set to \"2\", and try to use a 3x scaling filter like hq3x, the image is not going to look that great. The nearest-neighbor scalers are intended for use with bilinear interpolation enabled, for a sharper image, though the \"autoipsharper\" shader may provide better results.");
 
  static const char *CSD_shader = gettext_noop("Enable specified OpenGL shader.");
- static const char *CSDE_shader = gettext_noop("Obviously, this will only work with the OpenGL \"video.driver\" setting, and only on cards and OpenGL implementations that support shaders, otherwise you will get a black screen, or Mednafen may display an error message when starting up. When a shader is enabled, the \"<system>.videoip\" setting is ignored.");
+ static const char *CSDE_shader = gettext_noop("Obviously, this will only work with the OpenGL \"\5video.driver\" setting, and only on cards and OpenGL implementations that support shaders, otherwise you will get a black screen, or Mednafen may display an error message when starting up. When a shader is enabled, the \"\5<system>.videoip\" setting is ignored.");
 
  for(unsigned int i = 0; i < MDFNSystems.size() + 1; i++)
  {
@@ -425,14 +424,8 @@ void Video_MakeSettings(void)
   AddSystemSetting(sysname, "shader.goat.vdiv", gettext_noop("Constant RGB vertical divergence."), nullptr, MDFNST_FLOAT, "0.50", "-2.00", "2.00");
   AddSystemSetting(sysname, "shader.goat.pat", gettext_noop("Mask pattern."), nullptr, MDFNST_ENUM, "goatron", NULL, NULL, NULL, NULL, GoatPat_List);
   AddSystemSetting(sysname, "shader.goat.tp", gettext_noop("Transparency of otherwise-opaque mask areas."), nullptr, MDFNST_FLOAT, "0.50", "0.00", "1.00");
-  AddSystemSetting(sysname, "shader.goat.fprog", gettext_noop("Force interlaced video to be treated as progressive."), gettext_noop("When disabled, the default, the \"video.deinterlacer\" setting is effectively ignored with respect to what appears on the screen, unless it's set to \"blend\" or \"blend_rg\".  When enabled, it may be prudent to disable the scanlines effect controlled by the *.goat.slen setting, or else the scanline effect may look objectionable."), MDFNST_BOOL, "0");
+  AddSystemSetting(sysname, "shader.goat.fprog", gettext_noop("Force interlaced video to be treated as progressive."), gettext_noop("When disabled, the default, the \"\5video.deinterlacer\" setting is effectively ignored with respect to what appears on the screen, unless it's set to \"blend\" or \"blend_rg\".  When enabled, it may be prudent to disable the scanlines effect controlled by the \"\5<system>.shader.goat.slen\" setting, or else the scanline effect may look objectionable."), MDFNST_BOOL, "0");
   AddSystemSetting(sysname, "shader.goat.slen", gettext_noop("Enable scanlines effect."), nullptr, MDFNST_BOOL, "1");
-  //PATCH BRIGHTNESS
-  AddSystemSetting(sysname, "shader.gunlight.brightness", gettext_noop("Brightness gain."), nullptr, MDFNST_FLOAT, "0.50", "-1.00", "1.00");
- // AddSystemSetting(sysname, "shader.postprocess.contrast", gettext_noop("Contrast adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
- // AddSystemSetting(sysname, "shader.postprocess.saturation", gettext_noop("Saturation adjustment."), nullptr, MDFNST_FLOAT, "1.00", "0.00", "10.00");
-  AddSystemSetting(sysname, "shader.gunlight.flash_length", gettext_noop("Input length to apply brightness."), nullptr, MDFNST_UINT, "5", "0", "20");
-  //END PATCH
  }
 
  MDFNI_MergeSettings(GlobalVideoSettings);
@@ -529,6 +522,8 @@ static MDFN_PixelFormat emu_pf;
 double sr_x_scale = 1;
 double sr_y_scale = 1;
 
+static void GrabbyGoAway(void);
+
 static INLINE void MarkNeedBBClear(void)
 {
  NeedClear = 15;
@@ -553,12 +548,12 @@ static void SyncCleanup(void)
   delete ogl_blitter;
   ogl_blitter = nullptr;
  }
- 
+
  if(ogl_blitter_gunlight) //PSAKHIS
  {
   delete ogl_blitter_gunlight;
   ogl_blitter_gunlight = nullptr;
- }
+ } 
 
  if(glcontext)
  {
@@ -575,7 +570,7 @@ void Video_Kill(void)
  if (use_switchres) { //psakhis
   sr_deinit(); 
   printf("  VIDEO - Video_Kill - SWITCHRES unloaded \n");	//psakhis
- }	
+ }
  
  SyncCleanup();
 
@@ -584,12 +579,10 @@ void Video_Kill(void)
   if(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN)
    SDL_SetWindowFullscreen(window, 0);
   //
-  SDL_SetRelativeMouseMode(SDL_FALSE);
-  SDL_ShowCursor(SDL_TRUE);
-  SDL_SetWindowGrab(window, SDL_FALSE);
+  GrabbyGoAway();
 
   SDL_DestroyWindow(window);
-  window = nullptr;  
+  window = nullptr;
  }
  //
  //
@@ -615,9 +608,7 @@ bool Video_ErrorPopup(bool warning, const char* title, const char* text)
  if(window)
  {
   // Best not to drive the user stark raving mad.
-  SDL_SetRelativeMouseMode(SDL_FALSE);
-  SDL_ShowCursor(SDL_TRUE);
-  SDL_SetWindowGrab(window, SDL_FALSE);
+  GrabbyGoAway();
   // should we or shouldn't we...: SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, "0");
  }
 #if 0
@@ -758,13 +749,13 @@ static bool GenerateFullscreenDestRect(void)
     exs = video_settings.xscalefs;
     eys = video_settings.yscalefs;
   }
-    
+
   screen_dest_rect.w = floor(0.5 + VideoGI->nominal_width * exs);
   screen_dest_rect.h = floor(0.5 + VideoGI->nominal_height * eys);
-    
+
   if(rotated == MDFN_ROTATE90 || rotated == MDFN_ROTATE270)
    std::swap(screen_dest_rect.w, screen_dest_rect.h);
-     
+
   screen_dest_rect.x = (screen_w - screen_dest_rect.w) / 2;
   screen_dest_rect.y = (screen_h - screen_dest_rect.h) / 2;
  }
@@ -776,21 +767,65 @@ static bool GenerateFullscreenDestRect(void)
  return screen_dest_rect.w < 16384 && screen_dest_rect.h < 16384;
 }
 
-static bool weset_glstvb = false; 
+// Called on error popups and exit.
+static void GrabbyGoAway(void)
+{
+ SDL_SetRelativeMouseMode(SDL_FALSE);
+ SDL_ShowCursor(SDL_TRUE);
+
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+ SDL_SetWindowKeyboardGrab(window, SDL_FALSE);
+ SDL_SetWindowMouseGrab(window, SDL_FALSE);
+#else
+ SDL_SetWindowGrab(window, SDL_FALSE);
+#endif
+}
 
 void Video_SetWMInputBehavior(const WMInputBehavior& beeeeees)
 {
  CurWMIB = beeeeees;
  //
  const bool fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN);
- const bool grab = CurWMIB.Grab;
- const bool relm = CurWMIB.MouseRel && !CurWMIB.MouseAbs && !CurWMIB.Cursor && (grab || fs);
+ const bool grab_keyboard = CurWMIB.Grab_Keyboard;
+ const bool grab_mouse = CurWMIB.Grab_Mouse;
+ const bool relm = CurWMIB.MouseRel && !CurWMIB.MouseAbs && !CurWMIB.Cursor && (grab_mouse || fs);
  const bool curse = !relm && (CurWMIB.Cursor || video_settings.cursorvis == CURSORVIS_VISIBLE);
 
- //printf("Grab: %d, RelM: %d, Curse: %d\n", grab, relm, curse);
-
- if(grab)
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+ if(grab_keyboard || grab_mouse)
  {
+  SDL_ShowWindow(window);
+  SDL_RaiseWindow(window);
+
+  if(grab_keyboard)
+   SDL_SetWindowKeyboardGrab(window, SDL_TRUE);
+
+  if(grab_mouse)
+   SDL_SetWindowMouseGrab(window, SDL_TRUE);
+ }
+
+ SDL_ShowCursor(SDL_FALSE);
+ SDL_SetRelativeMouseMode(relm ? SDL_TRUE : SDL_FALSE);
+ SDL_ShowCursor(curse ? SDL_TRUE : SDL_FALSE);
+
+ if(!grab_keyboard)
+  SDL_SetWindowKeyboardGrab(window, SDL_FALSE);
+
+ if(!grab_mouse)
+  SDL_SetWindowMouseGrab(window, SDL_FALSE);
+#else
+ const bool any_grab = (grab_keyboard || grab_mouse);
+
+ if(any_grab && (bool)(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_GRABBED))
+ {
+  SDL_SetWindowGrab(window, SDL_FALSE);
+  SDL_SetRelativeMouseMode(SDL_FALSE);
+ }
+
+ if(any_grab)
+ {
+  SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, grab_keyboard ? "1" : "0");
+
   SDL_ShowWindow(window);
   SDL_RaiseWindow(window);
   SDL_SetWindowGrab(window, SDL_TRUE);
@@ -800,10 +835,11 @@ void Video_SetWMInputBehavior(const WMInputBehavior& beeeeees)
  SDL_SetRelativeMouseMode(relm ? SDL_TRUE : SDL_FALSE);
  SDL_ShowCursor(curse ? SDL_TRUE : SDL_FALSE);
 
- if(!grab)
+ if(!any_grab)
   SDL_SetWindowGrab(window, SDL_FALSE);
+#endif
 
- SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, grab ? "1" : "0");
+ SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, grab_keyboard ? "1" : "0");
 }
 
 #if 0
@@ -831,6 +867,7 @@ static ModeInfo SetMode(const ModeInfo& mode)
  if(new_mode == last_tried_mode && new_mode == cur_mode)
   SetMode(new_mode);
 #endif
+
 
 // SLK
 #ifdef WIN32
@@ -1253,7 +1290,6 @@ void Video_Sync(MDFNGI *gi)
 
  VideoGI = gi;
  rotated = gi->rotated;
- 
  //
  #ifdef WIN32
  if(MDFN_GetSettingB("video.disable_composition"))
@@ -1278,29 +1314,6 @@ void Video_Sync(MDFNGI *gi)
   }
  }
  #endif
-
- if(!getenv("__GL_SYNC_TO_VBLANK") || weset_glstvb)
- {
-  if(MDFN_GetSettingB("video.glvsync"))
-  {
-   #if HAVE_PUTENV
-   static char gl_pe_string[] = "__GL_SYNC_TO_VBLANK=1";
-   putenv(gl_pe_string); 
-   #elif HAVE_SETENV
-   setenv("__GL_SYNC_TO_VBLANK", "1", 1);
-   #endif
-  }
-  else
-  {
-   #if HAVE_PUTENV
-   static char gl_pe_string[] = "__GL_SYNC_TO_VBLANK=0";
-   putenv(gl_pe_string); 
-   #elif HAVE_SETENV
-   setenv("__GL_SYNC_TO_VBLANK", "0", 1);
-   #endif
-  }
-  weset_glstvb = true;
- }
  //
  osd_alpha_blend = MDFN_GetSettingB("osd.alpha_blend");
 
@@ -1329,13 +1342,6 @@ void Video_Sync(MDFNGI *gi)
  video_settings.shader_params.goat_tp = MDFN_GetSettingF(snp + "shader.goat.tp");
  video_settings.shader_params.goat_slen = MDFN_GetSettingB(snp + "shader.goat.slen");
  video_settings.shader_params.goat_fprog = MDFN_GetSettingB(snp + "shader.goat.fprog");
- //PATCH BRIGHTNESS
- video_settings.shader_params.gunlight_brightness = MDFN_GetSettingF(snp + "shader.gunlight.brightness");
- video_settings.shader_params.gunlight_flash_length = MDFN_GetSettingUI(snp + "shader.gunlight.flash_length");
- 
- //video_settings.shader_params.postprocess_contrast = MDFN_GetSettingF(snp + "shader.postprocess.contrast");
- //video_settings.shader_params.postprocess_saturation = MDFN_GetSettingF(snp + "shader.postprocess.saturation");
- //END PATCH
  //
 
  video_settings.fullscreen = MDFN_GetSettingB("video.fs");
@@ -1455,6 +1461,7 @@ void Video_Sync(MDFNGI *gi)
   gi->rotated = rotated;
   current_game_rotated = rotated;  
  }
+ 
  //
  //
  if(0)
@@ -1469,27 +1476,28 @@ void Video_Sync(MDFNGI *gi)
     SDL_SetWindowFullscreen(window, 0);
   }
  }
+
  GenerateWindowedDestRect();
- screen_w = screen_dest_rect.w;  
- screen_h = screen_dest_rect.h; 
+ screen_w = screen_dest_rect.w;
+ screen_h = screen_dest_rect.h;
  //
  //
 
  if(screen_dest_rect.w > 16383 || screen_dest_rect.h > 16383)
   throw MDFN_Error(0, _("Window size(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
 
- if(!video_settings.fullscreen) { //psakhis
-   SDL_SetWindowFullscreen(window, 0);  
-   SDL_PumpEvents();
-   SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h); 
-   SDL_PumpEvents();
-   SDL_SetWindowPosition(window, winpos_x, winpos_y);   
-   winpos_applied = true;
-   SDL_PumpEvents();
-   SDL_SetWindowTitle(window, (gi && gi->name.size()) ? gi->name.c_str() : "Mednafen");
-   SDL_PumpEvents();
-   SDL_ShowWindow(window);
-   SDL_PumpEvents(); 
+if(!video_settings.fullscreen) { //psakhis
+ SDL_SetWindowFullscreen(window, 0);
+ SDL_PumpEvents();
+ SDL_SetWindowSize(window, screen_dest_rect.w, screen_dest_rect.h);
+ SDL_PumpEvents();
+ SDL_SetWindowPosition(window, winpos_x, winpos_y);
+ winpos_applied = true;
+ SDL_PumpEvents();
+ SDL_SetWindowTitle(window, (gi && gi->name.size()) ? gi->name.c_str() : "Mednafen");
+ SDL_PumpEvents();
+ SDL_ShowWindow(window);
+ SDL_PumpEvents();
 }
  //
  if(0)
@@ -1581,7 +1589,6 @@ void Video_Sync(MDFNGI *gi)
    goto TryWindowed;
   }
 #endif
-
    int num_displays;
    int wx, wy;
    int ww, wh;
@@ -1692,7 +1699,7 @@ void Video_Sync(MDFNGI *gi)
 
   if(yres > 0)
    trymode.h = yres;
-  
+   
   //psakhis - 50/60hz
   if (use_super_resolution || use_native_resolution) 
   { 
@@ -1706,39 +1713,50 @@ void Video_Sync(MDFNGI *gi)
   if (bfi > 1) {
   	trymode.refresh_rate = resolution_to_change_vfreq * 2;
   }*/
- 
- if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
+
+  if(vdriver != VDRIVER_OPENGL)
+  {
+   if(!(trymode.format == SDL_PIXELFORMAT_RGB565 && (gi->ExtraVideoFormatSupport & EVFSUPPORT_RGB565)) &&
+      !(trymode.format == SDL_PIXELFORMAT_RGB555 && (gi->ExtraVideoFormatSupport & EVFSUPPORT_RGB555)) &&
+      !(SDL_BYTESPERPIXEL(trymode.format) == 4 && trymode.format != SDL_PIXELFORMAT_ARGB2101010))
+   {
+    trymode.format = SDL_PIXELFORMAT_RGB888;
+   }
+  }
+
+  if(!SDL_GetClosestDisplayMode(dindex, &trymode, &mode))
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because no modes big enough for %dx%d."), trymode.w, trymode.h);
    goto TryWindowed;
-  }   
+  }
 
   if(SDL_SetWindowDisplayMode(window, &mode) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowDisplayMode() failed: %s"), SDL_GetError());
    goto TryWindowed;
-  }     
+  }
 
 #if 0
   int old_mousex = 0;
   int old_mousey = 0;
   SDL_GetGlobalMouseState(&old_mousex, &old_mousey);
 #endif
-  
+
   if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) < 0)
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because SDL_SetWindowFullscreen() failed: %s"), SDL_GetError());
    goto TryWindowed;
-  }       
+  }
+  
   SDL_ShowWindow(window); //psakhis 
   //psakhis - delegate first switch to switchres
- if (use_switchres) 
- {
+  if (use_switchres) 
+  {
    Video_SetSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, gi->rotated);   
    Video_BlitRefresh();     
- }
- else
- {	   
+  }
+  else
+  {	   
    sr_x_scale = (double) mode.w / resolution_to_change_w; //psakhis - scale corrected 
    sr_y_scale = (double) mode.h / resolution_to_change_h; //psakhis - scale corrected
 
@@ -1749,18 +1767,18 @@ void Video_Sync(MDFNGI *gi)
   SDL_PumpEvents();
   SDL_WarpMouseGlobal(old_mousex, old_mousey);
 #endif
+
   screen_w = mode.w;
-  screen_h = mode.h;  
+  screen_h = mode.h;
   if(!GenerateFullscreenDestRect())
   {
    MDFN_Notify(MDFN_NOTICE_WARNING, _("Reverting to windowed mode because screen destination rectangle(%dx%d) is too large!"), screen_dest_rect.w, screen_dest_rect.h);
    goto TryWindowed;
   }
- } 
- //end psakhis 
+ }
+  //end psakhis 
   printf("  VIDEO - Video_sync - screen dest: %dx%d - %d,%d - scale(%.4f,%.4f)\n", screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y,sr_x_scale,sr_y_scale); // SLK
  } 
- 
  //
  //
  MDFN_printf(_("Driver: %s\n"), (vdriver == VDRIVER_OPENGL) ? _("OpenGL") : _("Software SDL") );
@@ -1778,8 +1796,8 @@ void Video_Sync(MDFNGI *gi)
    throw MDFN_Error(0, "SDL_GetWindowDisplayIndex() failed: %s", SDL_GetError());
 
   if(SDL_GetCurrentDisplayMode(dindex, &mode) < 0)
-   throw MDFN_Error(0, "SDL_GetCurrentDisplayMode() failed: %s", SDL_GetError());  
-       
+   throw MDFN_Error(0, "SDL_GetCurrentDisplayMode() failed: %s", SDL_GetError());
+
   if(mode.refresh_rate)
    MDFN_printf(_("Display Mode: %u x %u x %u bpp @ %dHz  (Window: %u x %u)\n"), mode.w, mode.h, SDL_BITSPERPIXEL(mode.format), mode.refresh_rate, screen_w, screen_h);
   else
@@ -1787,22 +1805,36 @@ void Video_Sync(MDFNGI *gi)
 
   if(vdriver != VDRIVER_OPENGL)
   {
-  	
    if(!(screen = SDL_GetWindowSurface(window)))
     throw MDFN_Error(0, _("SDL_GetWindowSurface() failed: %s"), SDL_GetError());
 
-   if(screen->format->BitsPerPixel != 32)
-    throw MDFN_Error(0, _("Window surface bit depth(%ubpp) is not supported by Mednafen."), screen->format->BitsPerPixel);
+   if(screen->format->BytesPerPixel == 4 &&
+	screen->format->Rloss == 0 && screen->format->Gloss == 0 && screen->format->Bloss == 0 &&
+	!((screen->format->Rshift | screen->format->Gshift | screen->format->Bshift) & 0x7))
+   {
+    int rs = screen->format->Rshift;
+    int gs = screen->format->Gshift;
+    int bs = screen->format->Bshift;
 
-   int rs = screen->format->Rshift;
-   int gs = screen->format->Gshift;
-   int bs = screen->format->Bshift;
+    int as = 0;
+    while(as == rs || as == gs || as == bs) // Find unused 8-bits to use as our alpha channel
+     as += 8;
 
-   int as = 0;
-   while(as == rs || as == gs || as == bs) // Find unused 8-bits to use as our alpha channel
-    as += 8;
+    osd_pf = game_pf = emu_pf = MDFN_PixelFormat(MDFN_COLORSPACE_RGB, 4, rs, gs, bs, as, 8, 8, 8, 8);
+   }
+   else if(screen->format->format == SDL_PIXELFORMAT_RGB565 && (gi->ExtraVideoFormatSupport & EVFSUPPORT_RGB565))
+    osd_pf = game_pf = emu_pf = MDFN_PixelFormat::RGB16_565;
+   else if(screen->format->format == SDL_PIXELFORMAT_RGB555 && (gi->ExtraVideoFormatSupport & EVFSUPPORT_RGB555))
+    osd_pf = game_pf = emu_pf = MDFN_PixelFormat::IRGB16_1555;
+   else
+   {
+    const char* pfname = SDL_GetPixelFormatName(screen->format->format);
 
-   osd_pf = game_pf = emu_pf = MDFN_PixelFormat(MDFN_COLORSPACE_RGB, 4, rs, gs, bs, as, 8, 8, 8, 8);
+    if(screen->format->format == SDL_PIXELFORMAT_RGB565 || screen->format->format == SDL_PIXELFORMAT_RGB555)
+     throw MDFN_Error(0, _("Window surface pixel format \"%s\" is not supported by module \"%s\"."), pfname, gi->shortname);
+    else
+     throw MDFN_Error(0, _("Window surface pixel format \"%s\" is not supported by Mednafen."), pfname);
+   }
   }
  }
 
@@ -1843,7 +1875,7 @@ void Video_Sync(MDFNGI *gi)
 
    if(CurrentScaler && (CurrentScaler->id == NTVB_HQ2X || CurrentScaler->id == NTVB_HQ3X || CurrentScaler->id == NTVB_HQ4X))
     preferred_format = EVFSUPPORT_NONE;
-
+   
    if (video_settings.shader == SHADER_GUNLIGHT) //PSAKHIS
    {   	
    	MDFN_printf(_("Applying GUNLIGHT SHADER...\n"));     	
@@ -1851,9 +1883,10 @@ void Video_Sync(MDFNGI *gi)
    	ogl_blitter_gunlight->SetViewport(screen_w, screen_h);           
    	video_settings.shader = SHADER_NONE;
    }	//END PSAKHIS
-   ogl_blitter = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
-   ogl_blitter->SetViewport(screen_w, screen_h);           
    
+   ogl_blitter = new OpenGL_Blitter(video_settings.scanlines, video_settings.shader, video_settings.shader_params, &game_pf, &osd_pf, preferred_format);
+   ogl_blitter->SetViewport(screen_w, screen_h);
+
    emu_pf = game_pf;
   }
   catch(std::exception& e)
@@ -1867,7 +1900,6 @@ void Video_Sync(MDFNGI *gi)
     can't be easily supported without rewriting the filters.
     We do conversion to the real screen format in the blitting function. 
  */
- 
 #ifdef WANT_FANCY_SCALERS
  if(CurrentScaler)
  {
@@ -1877,6 +1909,7 @@ void Video_Sync(MDFNGI *gi)
    SAI_SetFormat(emu_pf.opp * 8, emu_pf.Gprec == 5);
  }
 #endif
+
  {
   int xmu = std::max<int>(1, screen_w / 402);
   int ymu = std::max<int>(1, screen_h / 288);
@@ -1885,7 +1918,7 @@ void Video_Sync(MDFNGI *gi)
   SMRect.x = 0;
   SMRect.y = 0;
   SMRect.w = screen_w;
-
+  
   // SLK - Set OSD message rendering rect.
   if(use_super_resolution || use_switchres) // enlarge OSD message in super resolution mode
   {
@@ -1897,13 +1930,13 @@ void Video_Sync(MDFNGI *gi)
     SMDRect.w = SMRect.w * xmu;
   }
   // SLK - end
-  
-  //SMDRect.w = SMRect.w * xmu;
+
+ // SMDRect.w = SMRect.w * xmu;
   SMDRect.h = SMRect.h * ymu;
   SMDRect.x = (screen_w - SMDRect.w) / 2;
-  // SMDRect.y = screen_h - SMDRect.h;
-
-  // SLK - Vertical offset for OSD messages  
+ // SMDRect.y = screen_h - SMDRect.h;
+  
+ // SLK - Vertical offset for OSD messages  
   if(use_native_resolution || use_super_resolution || use_switchres)
   {
    switch(screen_h){
@@ -1923,7 +1956,7 @@ void Video_Sync(MDFNGI *gi)
    SMDRect.y = screen_h - SMDRect.h;
   }
   // SLK - end  
-
+  
   if(SMDRect.x < 0)
   {
    SMRect.w += SMDRect.x * 2 / xmu;
@@ -1953,12 +1986,12 @@ void Video_Sync(MDFNGI *gi)
   for(int i = 0; i < 2; i++)
    SDL_UpdateWindowSurface(window);
  }
- 
+
  MarkNeedBBClear();
  //
  //
  //
- Video_SetWMInputBehavior(CurWMIB); 
+ Video_SetWMInputBehavior(CurWMIB);
 }
 
 void Video_Init(void)
@@ -1970,7 +2003,8 @@ void Video_Init(void)
  CurWMIB.Cursor = true;
  CurWMIB.MouseAbs = true;
  CurWMIB.MouseRel = false;
- CurWMIB.Grab = false;
+ CurWMIB.Grab_Keyboard = false;
+ CurWMIB.Grab_Mouse = false;
  //
  for(unsigned i = 0; i < 2 && !window; i++)
  {
@@ -2181,7 +2215,7 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
  assert(dest_rect.h > 0);
 
    if(CurrentScaler)
-   {   	   	
+   {
     MDFN_Rect boohoo_rect({0, 0, eff_src_rect.w * CurrentScaler->xscale, eff_src_rect.h * CurrentScaler->yscale});
     MDFN_Surface bah_surface(NULL, boohoo_rect.w, boohoo_rect.h, boohoo_rect.w, eff_source_surface->format, false);
     const uint32 bypp = eff_source_surface->format.opp;
@@ -2245,17 +2279,6 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
 #endif
 
     if(ogl_blitter)
-     ogl_blitter->Blit(&bah_surface, &boohoo_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
-    else
-    {
-     SDL_to_MDFN_Surface_Wrapper m_surface(screen);
-
-     MDFN_StretchBlitSurface(&bah_surface, boohoo_rect, &m_surface, dest_rect, false, video_settings.scanlines, &eff_src_rect, rotated, InterlaceField);
-    }
-   }
-   else // No special scaler:
-   {
-    if(ogl_blitter)
     { 
      //PSAKHIS    		                       
      if ((ogl_blitter_gunlight) && (gunlight_pending_frames))  {  
@@ -2271,6 +2294,17 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
       //printf("no BLITET\n");       
      } 
     } 
+    else
+    {
+     SDL_to_MDFN_Surface_Wrapper m_surface(screen);
+
+     MDFN_StretchBlitSurface(&bah_surface, boohoo_rect, &m_surface, dest_rect, false, video_settings.scanlines, &eff_src_rect, rotated, InterlaceField);
+    }
+   }
+   else // No special scaler:
+   {
+    if(ogl_blitter)
+     ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
     else
     {
      SDL_to_MDFN_Surface_Wrapper m_surface(screen);
@@ -2307,6 +2341,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
  //
  //
  MDFN_Rect src_rect;
+
  if(rotated != new_rotated)
  {
   rotated = new_rotated;
@@ -2351,23 +2386,24 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
 #if 1
  {
   int sub[2] = { 0, 0 };
-  //SDL_DisplayMode mode;
+  SDL_DisplayMode mode;
+
   if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
    SDL_GetWindowPosition(window, &sub[0], &sub[1]);
 
   sub[0] += screen_dest_rect.x;
-  sub[1] += screen_dest_rect.y;  
-  //PSAKHIS mode faulty on switchres
+  sub[1] += screen_dest_rect.y;
+
   //if(SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(window), &mode) >= 0)
-  //{  	  
-   //JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;       
-   JoyGunTranslate[0].mul = (float)screen_w / screen_dest_rect.w / 32768.0;       
+  //{
+  // JoyGunTranslate[0].mul = (float)mode.w / screen_dest_rect.w / 32768.0;
+   JoyGunTranslate[0].mul = (float)screen_w / screen_dest_rect.w / 32768.0;   //psakhis
    JoyGunTranslate[0].sub = (float)sub[0] / screen_dest_rect.w;
-   
+
    //JoyGunTranslate[1].mul = (float)mode.h / screen_dest_rect.h / 32768.0;
-   JoyGunTranslate[1].mul = (float)screen_h / screen_dest_rect.h / 32768.0;
+   JoyGunTranslate[1].mul = (float)screen_h / screen_dest_rect.h / 32768.0; //psakhis
    JoyGunTranslate[1].sub = (float)sub[1] / screen_dest_rect.h;
-  //}  
+  //}
  }
 #endif
  //
@@ -2390,7 +2426,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
    ogl_blitter->ClearBackBuffer();
    if (ogl_blitter_gunlight) //PSAKHIS
    	ogl_blitter_gunlight->ClearBackBuffer();
-  } 
+  } 	
   else
   {
    SDL_FillRect(screen, NULL, 0);
@@ -2404,11 +2440,6 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
  src_rect.w = DisplayRect->w;
  src_rect.y = DisplayRect->y;
  src_rect.h = DisplayRect->h;
-
- //printf("      Src: %dx%d - %d,%d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y); 
- //printf("VIDEO SLK Scale factors: x=%d y=%d\n", sr_x_scale, sr_y_scale);
- //printf("  src_rect:  %dx%d - %d,%d\n",src_rect.w,src_rect.h,src_rect.x,src_rect.y);
- //printf("  Screen_dest_rect: %dx%d - %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
 
  if(LineWidths[0] == ~0) // Skip multi line widths code?
  {
@@ -2445,8 +2476,8 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
  {
   int y;
   int last_y = src_rect.y;
-  int last_width = LineWidths[src_rect.y];  
-   
+  int last_width = LineWidths[src_rect.y];
+
   MDFN_Rect sub_src_rect;
   MDFN_Rect sub_dest_rect;
 
@@ -2479,7 +2510,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
     }
     else if(rotated == MDFN_ROTATE270)
     {
-      if (use_native_resolution || use_super_resolution || use_switchres) {
+     if (use_native_resolution || use_super_resolution || use_switchres) {
        sub_dest_rect.x = screen_dest_rect.x + (src_rect.h - (y - src_rect.y)) * sr_x_scale;
        sub_dest_rect.y = screen_dest_rect.y;
       
@@ -2560,11 +2591,12 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
       //printf("      Output - PSAKHIS sub_dest_rect:   %dx%d %d,%d\n",sub_dest_rect.w,sub_dest_rect.h,sub_dest_rect.x,sub_dest_rect.y);
       //printf("      Output - PSAKHIS sub_screen_rect: %dx%d %d,%d\n",screen_dest_rect.w,screen_dest_rect.h,screen_dest_rect.x,screen_dest_rect.y);
      }
-    } 
+    }
+
     if(!sub_dest_rect.h) // May occur with small yscale values in certain cases, so prevent triggering an assert()
      sub_dest_rect.h = 1;
 
-     // Blit here!    
+    // Blit here!
     SubBlit(msurface, sub_src_rect, sub_dest_rect, InterlaceField);
 
     last_y = y;
@@ -2572,10 +2604,11 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
     if(y != (src_rect.y + src_rect.h))
     {
      last_width = LineWidths[y];
-    }    
+    }
+
+   }
   }
  }
-}
 
  if(take_ssnapshot)
  {
@@ -2777,8 +2810,8 @@ void Video_PtoV(const int in_x, const int in_y, float* out_x, float* out_y)
 float Video_PtoV_J(const int32 inv, const bool axis, const bool scr_scale)
 {
  assert(VideoGI);
- assert(window); 
- 
+ assert(window);
+
  if(!scr_scale)
   return 0.5 + (inv / 32768.0 - 0.5) * std::max<int32>(VideoGI->nominal_width, VideoGI->nominal_height) / (axis ? VideoGI->nominal_height : VideoGI->nominal_width);
  else

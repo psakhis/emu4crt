@@ -2,8 +2,7 @@
 
 MiSTer::MiSTer()
 {
-  sr_init(); 
-  printf("sr_get_version %s\n", sr_get_version());  
+  sr_init();   
 }
 
 MiSTer::~MiSTer()
@@ -15,7 +14,13 @@ void MiSTer::CmdClose(void)
 {        
    char buffer[1];        
    buffer[0] = CMD_CLOSE;
-   Send((char*)&buffer[0], 1);     		
+   Send((char*)&buffer[0], 1);   
+#ifdef WIN32
+   closesocket(sockfd);
+   WSACleanup();
+#else
+   close(sockfd);
+#endif  		
 }
 
 void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames, uint32_t sound_rate, uint8_t sound_chan)
@@ -184,7 +189,9 @@ void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
    //printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,orientation);     
   
    unsigned char retSR;
+   unsigned char retSR2;
    sr_mode swres_result;
+   sr_mode swres_user;
    int sr_mode_flags = 0; 
     
    if (h > 288) 
@@ -192,13 +199,23 @@ void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
  
    if (orientation)
     sr_mode_flags = sr_mode_flags | SR_MODE_ROTATED;  
-   
-   if (w == 341)
-    sr_set_user_mode(w, h, 0); //pce fix 341x240 
+     
    retSR = sr_add_mode(w, h, vfreq, sr_mode_flags, &swres_result);  
    
-   printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%.4f y=%.4f stretched(%d)\n", swres_result.width, swres_result.height,swres_result.vfreq, swres_result.x_scale, swres_result.y_scale, swres_result.is_stretched);		
-   //printf("  VIDEO - Video_SetSwitchres - sr_switch_to_mode return: %u\n", (unsigned int)retSR);          
+   if (retSR)
+    printf("  VIDEO - Video_SetSwitchres - result %dx%d@%f - x=%.4f y=%.4f stretched(%d)\n", swres_result.width, swres_result.height,swres_result.vfreq, swres_result.x_scale, swres_result.y_scale, swres_result.is_stretched);		
+   
+   if (swres_result.width != w) 
+   {
+   	sr_set_user_mode(w, swres_result.height, 0); 
+   	retSR2 = sr_add_mode(w, swres_result.height, vfreq, sr_mode_flags, &swres_user);    	
+   	if (retSR2 && swres_user.width == w)
+   	{
+   		printf("[INFO][MISTER] Video_SetSwitchres - user %dx%d@%f - x=%.4f y=%.4f stretched(%d)\n", swres_user.width, swres_user.height,swres_user.vfreq, swres_user.x_scale, swres_user.y_scale, swres_user.is_stretched);		   
+   		swres_result = swres_user;
+   		retSR = retSR2;
+   	}
+   }
    
    if (retSR && swres_result.width >= w && swres_result.height >= h) 
    {   	     	
@@ -412,7 +429,7 @@ void MiSTer::Sync()
     
   tickLastSync = tick2;     
   
- // if (sleepTime < 0 || (sleepTime + 10000 < realSleepTime)) //something it's wrong
+  if (sleepTime < 0 || (sleepTime + 10000 < realSleepTime)) //something it's wrong
    printf("Frame %d Sleep prev=%d/final=%d/real=%d (frameTime=%d ellapsed=%d blitTime=%d difGPU=%d emulationTime=%d) vsync=%d/%d\n", frame, prevSleepTime, sleepTime, realSleepTime, frameTime, elapsedTime, blitTime, diffTime, avgEmulationTime, vsync_auto, vcountGPU);	      
 
 }
@@ -463,6 +480,16 @@ int MiSTer::GetField(void)
 	}
 	firstField = false;	   	  
 	return field;
+}
+
+bool MiSTer::isInterlaced(void)
+{
+	return interlaced;
+}
+
+bool MiSTer::is480p(void)
+{
+	return ((height > 240 && !interlaced) || (width < height));
 }
 
 //Private

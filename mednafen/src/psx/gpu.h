@@ -198,6 +198,7 @@ struct PS_GPU
  int LineVisFirst, LineVisLast;
  bool ShowHOverscan;
  bool CorrectAspect;
+  
  int32 HVis;
  int32 HVisOffs;
  int32 NCABaseW;

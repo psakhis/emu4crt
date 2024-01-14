@@ -1,7 +1,6 @@
 #include "main.h"
 #include "ers.h"
 
-
 // Typical call sequence(example not done completely):
 //  NeedFrameSkip()
 //   (Emulate frame)
@@ -14,6 +13,21 @@ EmuRealSyncher::EmuRealSyncher()
  EmuClock = 0;
 }
 
+/*
+void EmuRealSyncher::usleep(__int64 usec) 
+{ 
+    HANDLE timer; 
+    LARGE_INTEGER ft; 
+
+    ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
+
+    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
+    WaitForSingleObject(timer, INFINITE); 
+    CloseHandle(timer); 
+    
+}
+*/
 void EmuRealSyncher::SetEmuClock(int64 EmuClock_arg)
 {
  EmuClock = EmuClock_arg;
@@ -92,7 +106,7 @@ void EmuRealSyncher::Sync(void)
    EmuTime = RealTime;
   }
 
-  SleepTime = ((EmuTime - RealTime) * 1000 / EmuClock) - 1;
+  SleepTime = ((EmuTime - RealTime) * 1000 / EmuClock) - 1;  
 
   if(SleepTime >= 0)
    Time::SleepMS(SleepTime);

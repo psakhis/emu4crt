@@ -111,7 +111,7 @@ void PPU::render_line() {
   flush_pixel_cache();
   build_window_tables(COL);
   update_bg_info();
-
+  
   switch(regs.bg_mode) {
     case 0: render_line_mode0(); break;
     case 1: render_line_mode1(); break;

@@ -98,7 +98,7 @@ static int Write(SexyAL_device *device, void *data, uint32 frames)
   const uint8 *data_in = (const uint8 *)data;
 
   while(frames)
-  {
+  {  	
    uint32 convert_this_iteration;
 
    convert_this_iteration = frames;

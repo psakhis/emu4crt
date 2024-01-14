@@ -2,7 +2,7 @@
 /* Mednafen Fast SNES Emulation Module                                        */
 /******************************************************************************/
 /* ppu_mt.cpp:
-**  Copyright (C) 2015-2019 Mednafen Team
+**  Copyright (C) 2015-2022 Mednafen Team
 **
 ** This program is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU General Public License
@@ -22,10 +22,6 @@
 #include "snes.h"
 #include "ppu.h"
 #include "ppu_mtrender.h"
-
-// SLK
-// #include <mednafen/mednafen.h>
-// SLK end
 
 #include <mednafen/Time.h>
 #include <mednafen/hash/sha256.h>
@@ -54,7 +50,6 @@ int prev_resolution_w;
 int prev_resolution_h;
 // SLK
 
-
 PPU_S PPU;
 
 #include "ppu_render_common.inc"
@@ -75,7 +70,7 @@ static PPUMT_DEFWRITE(Write_ScreenMode)
 
 static PPUMT_DEFWRITE(Write_2100)
 {
- if((INIDisp ^ V) & 0x80 & ~V)
+ if((INIDisp ^ V) & OAM_AllowFBReset & ~V)
   OAM_Addr = (OAMADDL | ((OAMADDH & 0x1) << 8)) << 1;
 
  INIDisp = V;
@@ -467,6 +462,8 @@ static INLINE bool DoCommand(uint8 Command, uint8 Arg8)
 
   if(!(INIDisp & 0x80))
    OAM_Addr = (OAMADDL | ((OAMADDH & 0x1) << 8)) << 1;
+
+  OAM_AllowFBReset = 0x80;
  }
  else if(Command == COMMAND_RESET_LINE_TARGET)
  {
@@ -476,6 +473,10 @@ static INLINE bool DoCommand(uint8 Command, uint8 Arg8)
 
   Status[1] = field << 7;
   RenderCommon_ResetLineTarget(PAL, ilaceon, field);
+ }
+ else if(Command == COMMAND_END_OAM_ADDR_RESET)
+ {
+  OAM_AllowFBReset = 0;
  }
 
  return ret;
@@ -537,6 +538,9 @@ static MDFN_HOT int RThreadEntry(void* data)
 
 void MTIF_Init(const uint64 affinity)
 {
+ MDFN_printf("MT: %zu cgram=%u oam=%u vram=%u\n", sizeof(PPU), (unsigned)((unsigned char*)&PPU.CGRAM - (unsigned char*)&PPU), (unsigned)((unsigned char*)&PPU.OAM - (unsigned char*)&PPU), (unsigned)((unsigned char*)&PPU.VRAM - (unsigned char*)&PPU));
+// exit(0);
+
  RenderCommon_Init();
  //
  //

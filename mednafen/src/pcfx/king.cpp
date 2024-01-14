@@ -494,13 +494,13 @@ static bool RAINBOWLayerDisable;
 
 static void RedoKINGIRQCheck(void);
 
+#ifdef WANT_DEBUGGER
 static INLINE void REGSETP(uint16 &reg, const uint8 data, const bool msb)
 {
  reg &= 0xFF << (msb ? 0 : 8);
  reg |= data << (msb ? 8 : 0);
 }
 
-#ifdef WANT_DEBUGGER
 static bool KRAMReadBPE = false;
 static bool KRAMWriteBPE = false;
 
@@ -1734,11 +1734,6 @@ uint16 KING_GetADPCMHalfWord(int ch)
 static uint32 HighDotClockWidth;
 extern RavenBuffer* FXCDDABufs[2]; // FIXME, externals are evil!
 
-// SLK
-int prev_dot_clock = 0; 
-bool prev_frame_interlaced = false;
-// SLK - end
-
 static void Cleanup(void)
 {
  if(king)
@@ -1758,19 +1753,8 @@ void KING_Init(void)
   memset(king, 0, sizeof(king_t));
 
   king->lastts = 0;
-  
-  // SLK
-  if (use_super_resolution || use_native_resolution || use_switchres)
-  {
-    printf("KING_Init - Use super or native or switchres resolution\n");
-    HighDotClockWidth = 256;
-  }
-  else
-  {
-    HighDotClockWidth = MDFN_GetSettingUI("pcfx.high_dotclock_width"); // cf. configuration file, 341 is default PC-FX value
-  }
-  // SLK - end
-  
+
+  HighDotClockWidth = MDFN_GetSettingUI("pcfx.high_dotclock_width");
   BGLayerDisable = 0;
 
   BuildCMT();
@@ -2497,23 +2481,6 @@ void KING_StartFrame(VDC **arg_vdc_chips, EmulateSpecStruct *espec)
   DisplayRect->y *= 2;
   DisplayRect->h *= 2;
  }
- // SLK
- if(fx_vce.dot_clock != prev_dot_clock || prev_frame_interlaced != fx_vce.frame_interlaced)
- {
-   printf("PCFX - KING_StartFrame\n");
-   printf("PCFX - HighDotClockWidth: %d\n",HighDotClockWidth);
-   printf("PCFX - fx_vce.dot_clock: %d\n",fx_vce.dot_clock);
-   
-   resolution_to_change_w =  (fx_vce.dot_clock) ? 344 : 256;
-   resolution_to_change_h =  (fx_vce.frame_interlaced) ? 480 : 240;
-   
-   prev_dot_clock        = fx_vce.dot_clock;
-   prev_frame_interlaced = fx_vce.frame_interlaced;
-   
-   //HighDotClockWidth = 341;  // Why ???
-   resolution_to_change = true;
-  }
- // SLK - end
 }
 
 static int rb_type;

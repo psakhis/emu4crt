@@ -221,8 +221,9 @@ void InputDevice_GunCon::UpdateInput(const void *data)
    if (!gunlight_cycle && _gunlight_frames) 
    {
      gunlight_cycle = true;
-     _gunlight_frames = _gunlight_frames + 4;	 //we need a once per video frame wait for blit
-     gunlight_wait = 4;    
+     int nwait = 4;   
+     _gunlight_frames = _gunlight_frames + nwait; //we need a once per video frame wait for blit
+     gunlight_wait = nwait;    
    }
  }
  

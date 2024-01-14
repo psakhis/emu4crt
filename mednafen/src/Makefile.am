@@ -115,20 +115,23 @@ if WANT_SNES_FAUST_EMU
 include snes_faust/Makefile.am.inc
 endif
 
-SS_SUBDIRS =
 if WANT_SS_EMU
-SS_SUBDIRS 		=	ss
+SUBDIRS			+=	ss
+else
+if WANT_SSFPLAY_EMU
+SUBDIRS			+=	ss
+endif
+endif
+
+if WANT_SS_EMU
 mednafen_LDADD          +=      ss/libss.a
 mednafen_DEPENDENCIES   +=      ss/libss.a
 endif
 
 if WANT_SSFPLAY_EMU
-SS_SUBDIRS 		=	ss
 mednafen_LDADD          +=      ss/libssfplay.a
 mednafen_DEPENDENCIES   +=      ss/libssfplay.a
 endif
-
-SUBDIRS	+= $(SS_SUBDIRS)
 
 if WANT_VB_EMU
 include vb/Makefile.am.inc
@@ -198,5 +201,5 @@ else
 include trio/Makefile.am.inc
 endif
 
-mednafen_LDADD		+= 	@FLAC_LIBS@ @ZLIB_LIBS@ @LIBINTL@ @LIBICONV@ 
+mednafen_LDADD		+= 	@FLAC_LIBS@ @ZLIB_LIBS@ @LIBINTL@ @LIBICONV@
 

@@ -15,7 +15,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-    
 #include "main.h"
 #include <SDL_revision.h>
 
@@ -67,12 +66,9 @@
 #include <mednafen/file.h>
 #include <mednafen/AtomicFIFO.h>
 
-
-
-
 static int PoC_start = 0; //psakhis mister
 static std::vector<uint8> tmp_buffer; //psakhis mister
-static uint32 size_tmp_buffer = 0; //psakhis mister   
+static uint32 size_tmp_buffer = 0; //psakhis mister 
 
 static bool SuppressErrorPopups;	// Set from env variable "MEDNAFEN_NOPOPUPS"
 
@@ -97,7 +93,7 @@ static const MDFNSetting_EnumList SDriver_List[] =
 
  { "alsa", -1, "ALSA", gettext_noop("The default for Linux(if available).") },
  { "openbsd", -1, "OpenBSD Audio", gettext_noop("The default for OpenBSD.") },
- { "oss", -1, "Open Sound System", gettext_noop("The default for non-Linux UN*X/POSIX/BSD(other than OpenBSD) systems, or anywhere ALSA is unavailable. If the ALSA driver gives you problems, you can try using this one instead.\n\nIf you are using OSSv4 or newer, you should edit \"/usr/lib/oss/conf/osscore.conf\", uncomment the max_intrate= line, and change the value from 100(default) to 1000(or higher if you know what you're doing), and restart OSS. Otherwise, performance will be poor, and the sound buffer size in Mednafen will be orders of magnitude larger than specified.\n\nIf the sound buffer size is still excessively larger than what is specified via the \"sound.buffer_time\" setting, you can try setting \"sound.period_time\" to 2666, and as a last resort, 5333, to work around a design flaw/limitation/choice in the OSS API and OSS implementation.") },
+ { "oss", -1, "Open Sound System", gettext_noop("The default for non-Linux UN*X/POSIX/BSD(other than OpenBSD) systems, or anywhere ALSA is unavailable. If the ALSA driver gives you problems, you can try using this one instead.\n\nIf you are using OSSv4 or newer, you should edit \"/usr/lib/oss/conf/osscore.conf\", uncomment the max_intrate= line, and change the value from 100(default) to 1000(or higher if you know what you're doing), and restart OSS. Otherwise, performance will be poor, and the sound buffer size in Mednafen will be orders of magnitude larger than specified.\n\nIf the sound buffer size is still excessively larger than what is specified via the \"\5sound.buffer_time\" setting, you can try setting \"\5sound.period_time\" to 2666, and as a last resort, 5333, to work around a design flaw/limitation/choice in the OSS API and OSS implementation.") },
 
  { "wasapish", -1, "WASAPI(Shared Mode)", gettext_noop("The default when it's available(running on Microsoft Windows Vista and newer).") },
 
@@ -148,6 +144,17 @@ static const MDFNSetting_EnumList FPSPos_List[] =
  { NULL, 0 },
 };
 
+static const MDFNSetting_EnumList InputGrabStrat_List[] =
+{
+ { "auto", INPUTGRAB_STRAT_AUTO, gettext_noop("Auto."), gettext_noop("Grab the system mouse only when an emulated mouse or other device that requires relative ball motion is active, and grab the system keyboard only when an emulated keyboard is active.") },
+ { "full", INPUTGRAB_STRAT_FULL, gettext_noop("Full."), gettext_noop("Grab the system mouse and keyboard regardless of whether or not an emulated keyboard or mouse/ball device is active.") },
+
+ { "kb_auto",	INPUTGRAB_STRAT_KB_AUTO, gettext_noop("Keyboard auto, mouse regardless of emulated devices.") },
+ { "mouse_auto",INPUTGRAB_STRAT_MOUSE_AUTO, gettext_noop("Mouse auto, keyboard regardless of emulated devices.") },
+
+ { NULL, 0 }
+};
+
 static const MDFNSetting DriverSettings[] =
 {
   { "input.joystick.global_focus", MDFNSF_NOFLAGS, gettext_noop("Update physical joystick(s) internal state in Mednafen even when Mednafen lacks OS focus."), NULL, MDFNST_BOOL, "1" },
@@ -157,9 +164,11 @@ static const MDFNSetting DriverSettings[] =
 //psakhis
   { "mister.host", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer ip."), NULL, MDFNST_STRING, "192.168.137.136" },
   { "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
-  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4)"), NULL, MDFNST_BOOL, "0"},
+  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4)"), NULL, MDFNST_BOOL, "1"},
   { "mister.vsync", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer vcount line for sync with nogpu. 0 for automatic vsync."), NULL, MDFNST_UINT, "0", "0", "240" },
 //end psakhis
+  { "input.grab.strategy", MDFNSF_NOFLAGS, gettext_noop("Input grabbing strategy."), gettext_noop("Selects the conditions for and extent of system keyboard and mouse grabbing when input grabbing is toggled on.\n\nNote that regardless of this setting, system keyboard grabbing is temporarily disabled while in the cheat interface, debugger, or netplay console text entry."), MDFNST_ENUM, "full", NULL, NULL, NULL, NULL, InputGrabStrat_List },
+
   { "netplay.host", MDFNSF_NOFLAGS, gettext_noop("Server hostname."), NULL, MDFNST_STRING, "netplay.fobby.net" },
   { "netplay.port", MDFNSF_NOFLAGS, gettext_noop("Server port."), NULL, MDFNST_UINT, "4046", "1", "65535" },
   { "netplay.console.font", MDFNSF_NOFLAGS, gettext_noop("Font for netplay chat console."), NULL, MDFNST_ENUM, "9x18", NULL, NULL, NULL, NULL, FontSize_List },
@@ -182,12 +191,12 @@ static const MDFNSetting DriverSettings[] =
 
   { "nothrottle", MDFNSF_NOFLAGS, gettext_noop("Disable speed throttling when sound is disabled."), NULL, MDFNST_BOOL, "0"},
   { "autosave", MDFNSF_NOFLAGS, gettext_noop("Automatically load/save state on game load/close."), gettext_noop("Automatically save and load save states when a game is closed or loaded, respectively."), MDFNST_BOOL, "0"},
-  { "autoload", MDFNSF_NOFLAGS, gettext_noop("Automatically load state on game load."), gettext_noop("Automatically load save states when a game is loaded."), MDFNST_BOOL, "0"},
+  { "autoload", MDFNSF_NOFLAGS, gettext_noop("Automatically load state on game load."), gettext_noop("Automatically load save states when a game is loaded."), MDFNST_BOOL, "0"}, //psakhis
   { "sound.driver", MDFNSF_NOFLAGS, gettext_noop("Select sound driver."), gettext_noop("The following choices are possible, sorted by preference, high to low, when \"default\" driver is used, but dependent on being compiled in."), MDFNST_ENUM, "default", NULL, NULL, NULL, NULL, SDriver_List },
   { "sound.device", MDFNSF_NOFLAGS, gettext_noop("Select sound output device."), gettext_noop("When using ALSA sound output under Linux, the \"sound.device\" setting \"default\" is Mednafen's default, IE \"hw:0\", not ALSA's \"default\". If you want to use ALSA's \"default\", use \"sexyal-literal-default\"."), MDFNST_STRING, "default", NULL, NULL },
   { "sound.volume", MDFNSF_NOFLAGS, gettext_noop("Sound volume level, in percent."), gettext_noop("Setting this volume control higher than the default of \"100\" may severely distort the sound."), MDFNST_UINT, "100", "0", "150" },
   { "sound", MDFNSF_NOFLAGS, gettext_noop("Enable sound output."), NULL, MDFNST_BOOL, "1" },
-  { "sound.period_time", MDFNSF_NOFLAGS, gettext_noop("Desired period size in microseconds(μs)."), gettext_noop("Currently only affects OSS, ALSA, WASAPI(exclusive mode), and SDL output.  A value of 0 defers to the default in the driver code in SexyAL.\n\nNote: This is not the \"sound buffer size\" setting, that would be \"sound.buffer_time\"."), MDFNST_UINT,  "0", "0", "100000" },
+  { "sound.period_time", MDFNSF_NOFLAGS, gettext_noop("Desired period size in microseconds(μs)."), gettext_noop("Currently only affects OSS, ALSA, WASAPI(exclusive mode), and SDL output.  A value of 0 defers to the default in the driver code in SexyAL.\n\nNote: This is not the \"sound buffer size\" setting, that would be \"\5sound.buffer_time\"."), MDFNST_UINT,  "0", "0", "100000" },
   { "sound.buffer_time", MDFNSF_NOFLAGS, gettext_noop("Desired buffer size in milliseconds(ms)."), gettext_noop("The default value of 0 enables automatic buffer size selection."), MDFNST_UINT, "0", "0", "1000" },
   { "sound.rate", MDFNSF_NOFLAGS, gettext_noop("Specifies the sound playback rate, in sound frames per second(\"Hz\")."), NULL, MDFNST_UINT, "48000", "22050", "192000"},
 
@@ -289,8 +298,6 @@ static MThreading::Mutex *StdoutMutex = NULL;
 //
 //
 
-static bool sc_blit_timesync;
-
 static char *soundrecfn=0;	/* File name of sound recording. */
 
 static char *qtrecfn = NULL;
@@ -314,46 +321,7 @@ static std::string GetModuleFileName_UTF8(HMODULE hModule)
  return Win32Common::T_to_UTF8(path.get(), nullptr, true);
 }
 
-static bool HandleConsoleMadness(void) // SLK - enforce stdout.txt & stderr.txt out to files                           
-{                                                                                                                      
-  bool ret;                                                                                                            
-  if(AllocConsole())                                                                                                   
-  {                                                                                                                    
-	HWND cwin = GetConsoleWindow();                                                                                 
-	ShowWindow(cwin, SW_HIDE);                                                                                      
-                                                                                                                       
-    freopen("CONOUT$", "w", stdout);                                                                                   
-    freopen("CONOUT$", "w", stderr);                                                                                   
-                                                                                                                       
-    SetConsoleOutputCP(65001);	// UTF-8                                                                                
-                                                                                                                       
-	std::string path;                                                                                               
- 	size_t catpos;	// Meow meow.                                                                                   
- 	path = GetModuleFileName_UTF8(NULL);                                                                            
-	if((catpos = path.find_last_of('\\')) != std::string::npos) path.resize(catpos + 1);                            
-	const std::u16string stdout_path = UTF8_to_UTF16(path + "stdout.txt", nullptr, true);                           
- 	const std::u16string stderr_path = UTF8_to_UTF16(path + "stderr.txt", nullptr, true);                           
- 	int new_stdout = -1;                                                                                            
- 	int new_stderr = -1;                                                                                            
- 	new_stdout = _wopen((const wchar_t*)stdout_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, _S_IREAD | _S_IWRITE);   
- 	new_stderr = _wopen((const wchar_t*)stderr_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, _S_IREAD | _S_IWRITE);   
-                                                                                                                       
-  	fflush(stdout);                                                                                                 
-  	fflush(stderr);                                                                                                 
-                                                                                                                       
-  	dup2(new_stdout, fileno(stdout));                                                                               
-  	dup2(new_stderr, fileno(stderr));                                                                               
-                                                                                                                       
-   close(new_stdout);                                                                                                  
-   close(new_stderr);                                                                                                  
-                                                                                                                       
-  }                                                                                                                    
-  ret = false;                                                                                                         
-  return ret;                                                                                                          
-} 
-
 // returns 1 if redirected, 0 if not redirected due to error, -1 if not redirected due to env variable
-/*
 static int RedirectSTDxxx(void)
 {
  const char* env_noredir = getenv("MEDNAFEN_NOSTDREDIR");
@@ -404,7 +372,6 @@ static int RedirectSTDxxx(void)
   return false;
  }
 }
-*/
 /*
 static BOOL CALLBACK ETWCB(HWND hwnd, LPARAM lParam)
 {
@@ -422,24 +389,25 @@ static BOOL CALLBACK ETWCB(HWND hwnd, LPARAM lParam)
  return TRUE;
 }
 */
-/*
+
 static void HandleConsoleMadness(void)
 {
  decltype(GetConsoleWindow)* p_GetConsoleWindow = (decltype(GetConsoleWindow)*)GetProcAddress(GetModuleHandleA("kernel32.dll"), "GetConsoleWindow");
 
  if(!p_GetConsoleWindow)
   return;
+ 
  //
  //
  HWND cwin = p_GetConsoleWindow();
-
+ 
  if(cwin)
  {
   DWORD cwin_pid = 0;
-
+  
   GetWindowThreadProcessId(cwin, &cwin_pid);
   if(GetCurrentProcessId() == cwin_pid)
-  {
+  { 
    if(RemoteOn || RedirectSTDxxx())
    {
     // Just hide the console window, don't call FreeConsole(), as Windows 10 does something weird that feels
@@ -447,9 +415,14 @@ static void HandleConsoleMadness(void)
     ShowWindow(cwin, SW_HIDE);
    }
   }
+  else //psakhis
+  {
+  	RedirectSTDxxx();	
+  } //end psakhis
  }
  else if(!RedirectSTDxxx())
  {
+ 	
   if(AllocConsole())
   {
    HANDLE hand_stdout, hand_stderr;
@@ -477,7 +450,7 @@ static void HandleConsoleMadness(void)
   }
  }
 }
-*/
+
 #endif
 
 void Mednafen::MDFND_OutputNotice(MDFN_NoticeType t, const char* s) noexcept
@@ -586,9 +559,9 @@ static bool CreateDataDirs(void)
    std::string dir = MDFN_GetSettingS(s.sname_path);
 
    if(!NVFS.is_absolute_path(dir))
-    dir = DrBaseDirectory + PSS + dir;
+    dir = DrBaseDirectory + MDFN_PSS + dir;
 
-   NVFS.create_missing_dirs(dir + PSS);
+   NVFS.create_missing_dirs(dir + MDFN_PSS);
   }
  }
  catch(std::exception &e)
@@ -659,7 +632,7 @@ static SignalInfo SignalDefs[] =
  #endif
 };
 
-static volatile int SignalSTDOUT;
+static int volatile SignalSTDOUT;
 
 static void SetSignals(void (*t)(int))
 {
@@ -879,11 +852,25 @@ static MDFN_COLD void PrintConfigMacros(void)
  MACROSTR(MDFN_HOT)
  MACROSTR(MDFN_ASSUME_ALIGNED(p, align))
  MACROSTR(MDFN_HIDE)
- MACROSTR(PSS_STYLE)
+ MACROSTR(MDFN_PSS_STYLE)
 #endif
  //
  #undef MACROSTR
  #undef MACROSTR2
+}
+
+static int DoArgs_LoadOverrideConfig(const char *name, const char *value)
+{
+ int r = MDFNI_LoadSettings(value, true);
+
+ if(r < 0)
+ {
+  ErrnoHolder ene(ENOENT);
+
+  MDFN_Notify(MDFN_NOTICE_ERROR, _("Failed to load settings from \"%s\": %s"), MDFN_strhumesc(value).c_str(), ene.StrError());
+ }
+
+ return r > 0;
 }
 
 static int netconnect = 0;
@@ -930,7 +917,8 @@ static bool DoArgs(int argc, char *argv[], char **filename)
         ARGPSTRUCT MDFNArgs[] = 
 	{
 	 { "help", _("Show help!"), &ShowCLHelp, 0, 0 },
-	 { "remote", _("Enable remote mode with the specified stdout key(EXPERIMENTAL AND INCOMPLETE)."), 0, &dummy_remote, SUBSTYPE_STRING_ALLOC },
+
+	 { "ovconfig", _("Load global override settings from specified file."), NULL, (void*)DoArgs_LoadOverrideConfig, SUBSTYPE_FUNCTION },
 
 	 // -loadcd is deprecated and only still supported because it's been around for yeaaaars.
 	 { "loadcd", NULL/*_("Load and boot a CD for the specified system.")*/, 0, &loadcd, SUBSTYPE_STRING_ALLOC },
@@ -942,8 +930,9 @@ static bool DoArgs(int argc, char *argv[], char **filename)
 	 { "soundrecord", _("Record sound output to the specified filename in the MS WAV format."), 0,&soundrecfn, SUBSTYPE_STRING_ALLOC },
 	 { "qtrecord", _("Record video and audio output to the specified filename in the QuickTime format."), 0, &qtrecfn, SUBSTYPE_STRING_ALLOC }, // TODOC: Video recording done without filtering applied.
 
-	 { "dump_settings_def", _("Dump settings definition data to specified file."), 0, &dsfn, SUBSTYPE_STRING_ALLOC },
-	 { "dump_modules_def", _("Dump modules definition data to specified file."), 0, &dmfn, SUBSTYPE_STRING_ALLOC },
+	 { "remote", /*_("Enable remote mode with the specified stdout key(EXPERIMENTAL AND INCOMPLETE).")*/NULL, 0, &dummy_remote, SUBSTYPE_STRING_ALLOC },
+	 { "dump_settings_def", /*_("Dump settings definition data to specified file.")*/NULL, 0, &dsfn, SUBSTYPE_STRING_ALLOC },
+	 { "dump_modules_def", /*_("Dump modules definition data to specified file.")*/NULL, 0, &dmfn, SUBSTYPE_STRING_ALLOC },
 
          { 0, NULL, (int *)InternalArgs.get(), 0, 0},
 
@@ -1065,12 +1054,16 @@ static bool DoArgs(int argc, char *argv[], char **filename)
 	return true;
 }
 
-static volatile unsigned NeedVideoSync = 0;
+static void CloseGame(void) MDFN_COLD;
+//
+//
+static unsigned volatile NeedVideoSync = false;
 //SLK
 static volatile unsigned NeedResolutionChange = 0;  // trigger to switch window/fullscreen resolution
 //SLK end
-static int GameLoop(void *arg);
-int volatile GameThreadRun = 0;
+static int volatile NeedExitNow = false;	// Set 'true' in various places, including signal handler.
+//
+//
 //psakhis
 static volatile unsigned NeedResolutionRefresh = 0; // trigger refresh video blitter on main thread if resolution changes
 static int SwitchLoop(void *arg); //sniffer changes
@@ -1081,7 +1074,17 @@ int volatile AudioThreadACK = 0;
 static int16 *BufferAudioThread = nullptr;
 static uint32 CountAudioThread = 0;	
 //psakhis end
+
 static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count);
+static void GameThread_HandleEvents(void);
+static int GameLoop(void *arg);
+static int volatile GameThreadRun = false;
+static bool InFrameAdvance = false;
+static bool NeedFrameAdvance = false;
+static bool GameLoopPaused = false;
+double CurGameSpeed = 1;
+
+static bool sc_blit_timesync;
 
 static bool sound_active;	// true if sound is enabled and initialized
 
@@ -1090,7 +1093,6 @@ static EmuRealSyncher ers;
 
 static bool autosave_load_error = false;
 
-static void CloseGame(void) MDFN_COLD;
 static int LoadGame(const char *force_module, const char *path)
 {
 	assert(MThreading::Thread_ID() == MainThreadID);
@@ -1171,7 +1173,7 @@ static int LoadGame(const char *force_module, const char *path)
 
 	// Load state before network connection.
 	// TODO: Move into core, MDFNI_LoadGame()
-	// Psakhis -> add autoload
+        // Psakhis -> add autoload
         if(MDFN_GetSettingB("autosave") || MDFN_GetSettingB("autoload"))
 	{
 	 if(!MDFNI_LoadState(NULL, "mca"))
@@ -1230,13 +1232,16 @@ static void CloseGame(void)
 	//
 	//
 	//
-	GameThreadRun = 0;
+	GameThreadRun = false;
 
 	if(GameThread)
 	{
 	 MThreading::Thread_Wait(GameThread, NULL);
 	 GameThread = NULL;
 	}
+	//
+	//
+	//
 	//psakhis
 	SwitchThreadRun = 0; 
 	AudioThreadRun = 0; 
@@ -1261,9 +1266,7 @@ static void CloseGame(void)
 	}
 	
 	//psakhis end
-	//
-	//
-	//
+	
         if(qtrecfn)	// Needs to be before MDFNI_Closegame() for now
          MDFNI_StopAVRecord();
 
@@ -1287,22 +1290,15 @@ static void CloseGame(void)
 	CurGame = NULL;
 }
 
-static void GameThread_HandleEvents(void);
-static int volatile NeedExitNow = 0;	// Set 'true' in various places, including signal handler.
-double CurGameSpeed = 1;
-
 void MainRequestExit(void)
 {
- NeedExitNow = 1;
+ NeedExitNow = true;
 }
 
 bool Mednafen::MDFND_CheckNeedExit(void)	// Called from netplay code, so we can break out of blocking loops after receiving a signal.
 {
- return (bool)NeedExitNow;
+ return !GameThreadRun;
 }
-
-static bool InFrameAdvance = 0;
-static bool NeedFrameAdvance = 0;
 
 bool IsInFrameAdvance(void)
 {
@@ -1321,10 +1317,12 @@ void DoFrameAdvance(void)
  InFrameAdvance = 1;
 }
 
-static int GameLoopPaused = 0;
-
-void DebuggerFudge(void)
+bool DebuggerFudge(void)
 {
+ if(!GameThreadRun)
+  return false;
+ //
+ //
  const uint32 WaitMS = 10;
  uint32 wt = Time::MonoMS() + WaitMS;
 
@@ -1339,23 +1337,27 @@ void DebuggerFudge(void)
   else
    Time::SleepMS(wt);
  }
-}
 
+ return true;
+}
 
 static int GameLoop(void *arg)
 {
 	while(GameThreadRun)
-	{		 
-	 mister.SetStartEmulate();	 	 	   	 	 
-         int16 *sound;
-         int32 ssize;
-         bool fskip;
-         
+	{
+	 mister.SetStartEmulate(); //psakhis	
+	 int16 *sound;
+	 int32 ssize;
+	 uint32 mcycs;
+	 bool fskip;
+        
 	 /* If we requested a new video mode, wait until it's set before calling the emulation code again.
 	 */
 	 while(NeedVideoSync)
 	 {
-	  if(!GameThreadRun) return(1);	// Might happen if video initialization failed
+	  if(!GameThreadRun)
+	   return 1;		// Might happen if video initialization failed
+
 	  Time::SleepMS(2);
 	 }
 
@@ -1370,29 +1372,29 @@ static int GameLoop(void *arg)
 	 fskip &= MDFN_GetSettingB("video.frameskip");
 	 fskip &= !(pending_ssnapshot || pending_snapshot || pending_save_state || pending_save_movie || NeedFrameAdvance);
 	 fskip |= (bool)NoWaiting;
-		
-	 //printf("fskip %d; NeedFrameAdvance=%d %d\n", fskip, NeedFrameAdvance, NoWaiting);
+
+	 //printf("fskip %d; NeedFrameAdvance=%d\n", fskip, NeedFrameAdvance);
 
 	 NeedFrameAdvance = false;
 	 //
 	 //
 	 SoftFB[SoftFB_BackBuffer].lw[0] = ~0;
- 	 
+
 	 //
 	 //
 	 //
 	 EmulateSpecStruct espec;
 
-         espec.surface = SoftFB[SoftFB_BackBuffer].surface.get();        
-         espec.LineWidths = SoftFB[SoftFB_BackBuffer].lw.get();        
+         espec.surface = SoftFB[SoftFB_BackBuffer].surface.get();
+         espec.LineWidths = SoftFB[SoftFB_BackBuffer].lw.get();
 	 espec.skip = fskip;
 	 espec.soundmultiplier = CurGameSpeed;
-	
 	 espec.NeedRewind = DNeedRewind;
+
  	 espec.SoundRate = Sound_GetRate();
-	 espec.SoundBuf = Sound_GetEmuModBuffer(&espec.SoundBufMaxSize);	
+	 espec.SoundBuf = Sound_GetEmuModBuffer(&espec.SoundBufMaxSize);
  	 espec.SoundVolume = (double)MDFN_GetSettingUI("sound.volume") / 100;
-	 
+
 	 if(MDFN_UNLIKELY(StateFuzzTest))
 	 {
 	  EmulateSpecStruct estmp = espec;
@@ -1403,9 +1405,9 @@ static int GameLoop(void *arg)
 	  MDFNSS_LoadSM(&state0, false, MDFNSS_FUZZ_RANDOM);
 	  MDFNI_Emulate(&estmp);
 	  state0.rewind();
-	  MDFNSS_LoadSM(&state0);	 
-	 } 	 	  	  	 
- 	  	 
+	  MDFNSS_LoadSM(&state0);
+	 }
+
 	 if(MDFN_UNLIKELY(StateRCTest))
 	 {
 	  // Note: Won't work correctly with modules that do mid-sync.
@@ -1423,8 +1425,8 @@ static int GameLoop(void *arg)
 	  state0.rewind();
 	  MDFNSS_LoadSM(&state0);
 	  MDFNI_Emulate(&espec);
-	  MDFNSS_SaveSM(&state2);                                             	
-          
+	  MDFNSS_SaveSM(&state2);
+
 	  if(!(state1.map_size() == state2.map_size() && !memcmp(state1.map() + 32, state2.map() + 32, state1.map_size() - 32)))
 	  {
 	   FileStream sd0("/tmp/sdump0", FileStream::MODE_WRITE);
@@ -1438,10 +1440,10 @@ static int GameLoop(void *arg)
 	   abort();
 	  }
 	 }
-	 else 
-          MDFNI_Emulate(&espec);                   
-         
-         mister.SetEndEmulate();
+	 else
+          MDFNI_Emulate(&espec);
+
+	 mister.SetEndEmulate(); //psakhis
 
 	 //psakhis: activate change on switch thread 	 
 	 if (!NeedResolutionChange && resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
@@ -1449,7 +1451,8 @@ static int GameLoop(void *arg)
 	  MThreading::Sem_Post(STWakeupSem);	
 	  resolution_to_change = false;	  	  
 	 }
-	 //psakhis end	 	 
+	 //psakhis end	 
+	 
 	 if(MDFN_UNLIKELY(StateSLSTest))
 	 {
 	  MemoryStream orig_state(524288);
@@ -1473,29 +1476,29 @@ static int GameLoop(void *arg)
 	   abort();
 	  }
 	 }
-  	 
-	 ers.AddEmuTime((espec.MasterCycles - espec.MasterCycles_DriverProcessed) / CurGameSpeed);
-	
+
 	 SoftFB[SoftFB_BackBuffer].rect = espec.DisplayRect;
 	 SoftFB[SoftFB_BackBuffer].field = espec.InterlaceOn ? espec.InterlaceField : -1;
 
 	 sound = espec.SoundBuf + (espec.SoundBufSize_DriverProcessed * CurGame->soundchan);
 	 ssize = espec.SoundBufSize - espec.SoundBufSize_DriverProcessed;
-		 	
+	 mcycs = (espec.MasterCycles - espec.MasterCycles_DriverProcessed) / CurGameSpeed;
 	 //
 	 //
 	 //
 
-   	
 	 FPS_IncVirtual(espec.MasterCycles);
 	 if(!fskip)
-	  FPS_IncDrawn();        
-        
+	  FPS_IncDrawn();
+
+
 	 {
 	  bool do_flip = false;
-  
+
 	  do
 	  {
+	   ers.AddEmuTime(mcycs);	// Call before MDFND_Update()
+
  	   if(fskip && ((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused))
 	   {
 	    // If this frame was skipped, and the game loop is paused(IE cheat interface is active) or we're in frame advance, just blit the last
@@ -1507,32 +1510,37 @@ static int GameLoop(void *arg)
 	    //	Will fail spectacularly if there is no previous successful frame.  BOOOOOOM.  (But there always should be, especially since we initialize some
   	    //   of the video buffer and rect structures during startup)
 	    //
-            MDFND_Update(SoftFB_BackBuffer ^ 1, sound, ssize);         
+            MDFND_Update(SoftFB_BackBuffer ^ 1, sound, ssize);
 	   }
 	   else
             do_flip = MDFND_Update(fskip ? -1 : SoftFB_BackBuffer, sound, ssize);
-	
-	
-   	
-		
+
 	   FPS_UpdateCalc();
 
 	   Netplay_GT_CheckPendingLine();
 
            if((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused)
 	   {
-            if(ssize)
-	     for(int x = 0; x < CurGame->soundchan * ssize; x++)
-	      sound[x] = 0;
+	    int32 sbms;
+
+	    mcycs = CurGame->MasterClock / MDFN_MASTERCLOCK_FIXED(50);
+	    sound = Sound_GetEmuModBuffer(&sbms);
+	    ssize = std::min<int32>(sbms, Sound_GetRate() / 50);
+
+	    if(sound)
+	    {
+	     for(int i = 0; i < CurGame->soundchan * ssize; i++)
+	      sound[i] = 0;
+	    }
 	   }
 	  } while(((InFrameAdvance && !NeedFrameAdvance) || GameLoopPaused) && GameThreadRun);
 	  SoftFB_BackBuffer ^= do_flip;
 	 }
-	
-	}	
-	
-	return(1);
+	}
+
+	return 1;
 }   
+
 
 //psakhis: implements switches on a separate thread with semaphore activator from main loop thread
 static int SwitchLoop(void *arg)
@@ -1652,7 +1660,7 @@ std::string GetBaseDirectory(void)
 
   ol = _tgetenv(TEXT("HOME"));
   if(ol)
-   return Win32Common::T_to_UTF8(ol, nullptr, true) + PSS + ".mednafen";
+   return Win32Common::T_to_UTF8(ol, nullptr, true) + MDFN_PSS + ".mednafen";
  }
 
  {
@@ -1677,7 +1685,7 @@ std::string GetBaseDirectory(void)
 
  ol = getenv("HOME");
  if(ol)
-  return std::string(ol) + PSS + ".mednafen";
+  return std::string(ol) + MDFN_PSS + ".mednafen";
 
  #if defined(HAVE_GETUID) && defined(HAVE_GETPWUID)
  {
@@ -1686,7 +1694,7 @@ std::string GetBaseDirectory(void)
   psw = getpwuid(getuid());
 
   if(psw != NULL && psw->pw_dir[0] != 0 && strcmp(psw->pw_dir, "/dev/null"))
-   return std::string(psw->pw_dir) + PSS + ".mednafen";
+   return std::string(psw->pw_dir) + MDFN_PSS + ".mednafen";
  }
  #endif
  return "";
@@ -1717,8 +1725,7 @@ static void GameThread_HandleEvents(void)
 		switch(event.user.code & 0xFFFF)
 		{
 		 case CEVT_SET_INPUT_FOCUS:
-			MDFNDHaveFocus = (event.user.data1 != NULL);
-			//printf("%u\n", MDFNDHaveFocus);
+			Input_SetFocus((event.user.data1 != NULL));
 			break;
 		}
 		break;
@@ -1766,7 +1773,7 @@ void GT_ToggleFS(void)
  // assert(MThreading::Thread_ID() == GameThreadID);
  MThreading::Mutex_Lock(VTMutex);
  MDFNI_SetSettingB("video.fs", !MDFN_GetSettingB("video.fs"));
- NeedVideoSync++;
+ NeedVideoSync = true;
  MThreading::Mutex_Unlock(VTMutex);
 
  MThreading::Sem_Post(VTWakeupSem);
@@ -1780,7 +1787,7 @@ bool GT_ReinitVideo(void)
 {
  // assert(MThreading::Thread_ID() == GameThreadID);
  MThreading::Mutex_Lock(VTMutex);
- NeedVideoSync++;
+ NeedVideoSync = true;
  MThreading::Mutex_Unlock(VTMutex);
 
  MThreading::Sem_Post(VTWakeupSem);
@@ -1809,9 +1816,9 @@ bool GT_ReinitSound(void)
  return(ret);
 }
 
-void GT_SetWMInputBehavior(bool CursorNeeded, bool MouseAbsNeeded, bool MouseRelNeeded, bool GrabNeeded)
+void GT_SetWMInputBehavior(const WMInputBehavior& wmib)
 {
- SendCEvent(CEVT_SET_WMINPUTBEHAVIOR, nullptr, nullptr, (CursorNeeded << 0) | (MouseAbsNeeded << 1) | (MouseRelNeeded << 2) | (GrabNeeded << 3));
+ SendCEvent(CEVT_SET_WMINPUTBEHAVIOR, nullptr, nullptr, (wmib.Cursor << 0) | (wmib.MouseAbs << 1) | (wmib.MouseRel << 2) | (wmib.Grab_Keyboard << 3) | (wmib.Grab_Mouse << 4));
 }
 
 void PumpWrap(void)
@@ -1854,7 +1861,7 @@ void PumpWrap(void)
 	break;
 
    case SDL_QUIT:
-	NeedExitNow = 1;
+	NeedExitNow = true;
 	break;
 
    case SDL_USEREVENT:
@@ -1871,20 +1878,25 @@ void PumpWrap(void)
 		MT_SetMovieStatus((StateStatusStruct *)event.user.data1);
 		break;
 
+	 case CEVT_CLOSE_POPUP:
+		Netplay_TryTextExit();
+		break;
+
 	 case CEVT_WANT_EXIT:
+		NeedExitNow = true;
+		break;
+
+	 case CEVT_WANT_OLD_EXIT:
 		if(!Netplay_TryTextExit())
-		{
-		 SDL_Event evt;
-		 evt.quit.type = SDL_QUIT;
-		 SDL_PushEvent(&evt);
-		}
+		 NeedExitNow = true;
 		break;
 
 	 case CEVT_SET_WMINPUTBEHAVIOR:
 		NeededWMInputBehavior.Cursor = (bool)(idata16 & 0x1);
 		NeededWMInputBehavior.MouseAbs = (bool)(idata16 & 0x2);
 		NeededWMInputBehavior.MouseRel = (bool)(idata16 & 0x4);
-		NeededWMInputBehavior.Grab = (bool)(idata16 & 0x8);
+		NeededWMInputBehavior.Grab_Keyboard = (bool)(idata16 & 0x8);
+		NeededWMInputBehavior.Grab_Mouse = (bool)(idata16 & 0x10);
 		NeededWMInputBehavior_Dirty = true;
 		break;
 
@@ -1951,7 +1963,7 @@ void PrintGLIBCXXInfo(void)
 }
 #endif
 
-void PrintSDLVersion(void)
+static bool CheckPrintSDLVersion(void)
 {
  SDL_version sver;
 
@@ -1962,8 +1974,10 @@ void PrintSDLVersion(void)
  if(SDL_VERSIONNUM(sver.major, sver.minor, sver.patch) < SDL_VERSIONNUM(SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL))
  {
   MDFN_Notify(MDFN_NOTICE_ERROR, _("Running with a version of SDL older than the version compiled and linked against!"));
-  abort();
+  return false;
  }
+
+ return true;
 }
 
 #ifdef HAVE_LIBFLAC
@@ -2049,8 +2063,8 @@ char *GetFileDialog(void)
 
 static bool LoadSettings(void)
 {
- const std::string opath09x = DrBaseDirectory + PSS + "mednafen-09x.cfg";
- const std::string npath = DrBaseDirectory + PSS + "mednafen.cfg";
+ const std::string opath09x = DrBaseDirectory + MDFN_PSS + "mednafen-09x.cfg";
+ const std::string npath = DrBaseDirectory + MDFN_PSS + "mednafen.cfg";
  bool mednafencfg_old = false;	// "mednafen.cfg" is old(0.8.x or earlier), or nonexistent
 
  try
@@ -2109,16 +2123,16 @@ static bool LoadSettings(void)
     {
      assert(s.desc.type == MDFNST_STRING);
      //
-     const size_t s_value_len = strlen(s.value);
+     const size_t s_value_len = strlen(s.value[0]);
      if(s_value_len > 0)
      {
       int req;
 
-      if((req = MultiByteToWideChar(CP_ACP, 0, s.value, s_value_len, NULL, 0)) > 0) // not CP_THREAD_ACP
+      if((req = MultiByteToWideChar(CP_ACP, 0, s.value[0], s_value_len, NULL, 0)) > 0) // not CP_THREAD_ACP
       {
        std::unique_ptr<char16_t[]> ws(new char16_t[req]);
 
-       if(MultiByteToWideChar(CP_ACP, 0, s.value, s_value_len, (wchar_t*)ws.get(), req) == req)
+       if(MultiByteToWideChar(CP_ACP, 0, s.value[0], s_value_len, (wchar_t*)ws.get(), req) == req)
         MDFNI_SetSetting(s.desc.name, UTF16_to_UTF8(ws.get(), req));
        else
         throw MDFN_Error(0, _("Error converting value of setting \"%s\" to UTF-8."), s.desc.name);
@@ -2144,9 +2158,181 @@ static bool LoadSettings(void)
 
 static void SaveSettings(void)
 {
- const std::string npath = DrBaseDirectory + PSS + "mednafen.cfg";
+ try
+ {
+  const std::string npath = DrBaseDirectory + MDFN_PSS + "mednafen.cfg";
 
- MDFNI_SaveSettings(npath.c_str());
+  MDFNI_SaveSettings(npath.c_str());
+ }
+ catch(std::exception& e)
+ {
+  MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
+ }
+}
+
+static bool MainVideoLoop(void)
+{
+ bool FirstVideoSync = true;
+ bool VideoError = false;
+
+ while(MDFN_LIKELY(!NeedExitNow))
+ {
+  MThreading::Mutex_Lock(VTMutex);	/* Lock mutex */
+
+  try
+  {
+   PumpWrap();
+
+   if(MDFN_UNLIKELY(NeedVideoSync))
+   {
+    VideoError = false;     // Set to false before calling Video_Sync().
+    //
+    Video_Sync(CurGame);
+    PumpWrap();
+    //
+    FirstVideoSync = false; // Set to false AFTER calling Video_Sync().
+    NeedVideoSync = false;  // same
+   }
+   
+   // SLK + psakhis     	   
+   if(MDFN_LIKELY(NeedResolutionChange) && MDFN_LIKELY(NeedResolutionRefresh))
+   {                                                                                                              
+     printf("MAIN - VIDEO - Refresh blitter after a resolution change\n");                                                     
+     Video_BlitRefresh();              
+     NeedResolutionChange--;
+     NeedResolutionRefresh--;	   
+   }                                                                                                              
+   // SLK + psakhis END 
+	   
+   if(NeededWMInputBehavior_Dirty)
+   {
+    Video_SetWMInputBehavior(NeededWMInputBehavior);
+    NeededWMInputBehavior_Dirty = false;
+   }
+
+   {
+    const int vtr = VTReady.load(std::memory_order_acquire);
+
+    if(vtr >= 0)
+    {
+     if(!VideoError)
+      BlitScreen(SoftFB[vtr].surface.get(), &SoftFB[vtr].rect, SoftFB[vtr].lw.get(), VTRotated, SoftFB[vtr].field, VTSSnapshot);
+
+     // Set to -1 after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
+     VTReady.store(-1, std::memory_order_release);
+    }
+   }
+  }
+  catch(std::exception& e)
+  {
+   MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
+
+   if(FirstVideoSync || VideoError)
+   {
+    MThreading::Mutex_Unlock(VTMutex);   /* Unlock mutex */
+    return false;
+   }
+
+   VideoError = true;
+   NeedVideoSync = false;
+  }
+
+  MThreading::Mutex_Unlock(VTMutex);   /* Unlock mutex */
+
+  MThreading::Sem_TimedWait(VTWakeupSem, 1);
+ }
+
+ return true;
+}
+
+static bool LoadAndRunGame(const char* force_module, const char* path)
+{
+ bool ret = true;
+
+ VTReady.store(-1, std::memory_order_release);
+
+ NeedExitNow = false;
+
+ try
+ {
+  if(LoadGame(force_module, path))
+  {
+   const uint64 vt_affinity = MDFN_GetSettingUI("affinity.video");
+   const uint64 gt_affinity = MDFN_GetSettingUI("affinity.emu");
+
+   for(int i = 0; i < 2; i++)
+   {
+    SoftFB[i].surface.reset(new MDFN_Surface(NULL, CurGame->fb_width, CurGame->fb_height, CurGame->fb_width, MDFN_PixelFormat::ABGR32_8888));
+    SoftFB[i].lw.reset(new int32[CurGame->fb_height]);
+    memset(SoftFB[i].lw.get(), 0, sizeof(int32) * CurGame->fb_height);
+
+    SoftFB[i].surface->Fill(0, 0, 0, 0);
+
+    //
+    // Debugger step mode, cheat interface, and frame advance mode rely on the previous backbuffer being valid in certain situations.  Initialize some stuff here so that
+    // reliance will still work even immediately after startup.
+    SoftFB[i].rect.w = std::min<int32>(16, SoftFB[i].surface->w);
+    SoftFB[i].rect.h = std::min<int32>(16, SoftFB[i].surface->h);
+    SoftFB[i].lw[0] = ~0;
+   }
+
+   FPS_Init(MDFN_GetSettingUI("fps.position"), MDFN_GetSettingUI("fps.scale"), MDFN_GetSettingUI("fps.font"), MDFN_GetSettingUI("fps.textcolor"), MDFN_GetSettingUI("fps.bgcolor"));
+   if(MDFN_GetSettingB("fps.autoenable"))
+    FPS_ToggleView();
+   //
+   //
+   NeedVideoSync = true;	// Set to true before creating game thread.
+   GameThreadRun = true;
+   GameThread = MThreading::Thread_Create(GameLoop, NULL, "MDFN Emulation");
+
+   if(gt_affinity)
+    MThreading::Thread_SetAffinity(GameThread, gt_affinity);
+
+   if(vt_affinity)
+    MThreading::Thread_SetAffinity(NULL, vt_affinity);
+   
+   //psakhis: create thread with semaphore for switches
+   SwitchThreadRun = 1;
+   SwitchThread = MThreading::Thread_Create(SwitchLoop, NULL, "MDFN Switch");
+
+   //psakhis: create thread with semaphore for audio
+   AudioThreadRun = 1;
+   AudioThread = MThreading::Thread_Create(AudioLoop, NULL, "MDFN Audio");
+ 
+   if(vt_affinity) 	 
+    MThreading::Thread_SetAffinity(SwitchThread, vt_affinity); 
+ 
+   if(vt_affinity)
+    MThreading::Thread_SetAffinity(AudioThread, vt_affinity);  
+   //psakhis end
+	  
+   //
+   //
+   //
+   if(!MainVideoLoop())
+    ret = false;
+  }
+  else
+   ret = false;
+ }
+ catch(std::exception& e)
+ {
+  MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
+  ret = false;
+ }
+ //
+ //
+ CloseGame();
+
+ FPS_Kill();
+
+ for(int i = 0; i < 2; i++)
+ {
+  SoftFB[i].surface.reset(nullptr);
+  SoftFB[i].lw.reset(nullptr);
+ }
+
+ return ret;
 }
 
 #ifdef WIN32
@@ -2196,7 +2382,6 @@ extern "C"
  void __set_app_type(int);
  extern int mingw_app_type;
 }
-
 __attribute__((force_align_arg_pointer))	// Not sure what's going on to cause this to be needed.
 #endif
 int main(int argc, char *argv[])
@@ -2228,7 +2413,6 @@ int main(int argc, char *argv[])
 	//
 	//
 	std::unique_ptr<FileStream> lockfs;
-	int FatalVideoError = -1;
 
 	#ifdef WIN32
 	if(!MSW_GetArgcArgv(&argc, &argv))
@@ -2241,9 +2425,13 @@ int main(int argc, char *argv[])
 	}
 	#endif
 	// Place before calls to SDL_Init()
-	putenv(strdup("SDL_DISABLE_LOCK_KEYS=1"));
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
-	SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "1");
+	#ifdef SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED
+	SDL_SetHint(SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED, "0");
+	#endif
+	#ifdef SDL_HINT_APP_NAME
+	SDL_SetHint(SDL_HINT_APP_NAME, "Mednafen");
+	#endif
 	//
 	//
 	//
@@ -2265,8 +2453,6 @@ int main(int argc, char *argv[])
 	char *needie = NULL;
 
         //
-
-	MDFNDHaveFocus = false;
 
 	DrBaseDirectory = GetBaseDirectory();
 
@@ -2314,14 +2500,17 @@ int main(int argc, char *argv[])
 	MDFN_indent(1);
 
         MDFN_printf(_("Build information:\n"));
-        MDFN_indent(2);
-        PrintCompilerVersion();
-	//PrintGLIBCXXInfo();
-        PrintZLIBVersion();
-	PrintLIBICONVVersion();
-        PrintSDLVersion();
-        PrintLIBFLACVersion();
-        MDFN_indent(-2);
+	{
+	 MDFN_AutoIndent aind(2);
+
+	 PrintCompilerVersion();
+	 //PrintGLIBCXXInfo();
+	 PrintZLIBVersion();
+	 PrintLIBICONVVersion();
+	 if(!CheckPrintSDLVersion())
+	  return -1;
+	 PrintLIBFLACVersion();
+	}
 
         MDFN_printf(_("Base directory: %s\n"), MDFN_strhumesc(DrBaseDirectory).c_str());
 
@@ -2371,7 +2560,7 @@ int main(int argc, char *argv[])
 	try
 	{
  	 // Create base directory
-	 NVFS.create_missing_dirs(DrBaseDirectory + PSS);
+	 NVFS.create_missing_dirs(DrBaseDirectory + MDFN_PSS);
 	}
 	catch(std::exception &e)
 	{
@@ -2386,7 +2575,7 @@ int main(int argc, char *argv[])
 	 MDFN_AutoIndent aind(1);
 	 try
 	 {
-	  lockfs.reset(new FileStream(DrBaseDirectory + PSS + "mednafen.lck", FileStream::MODE_WRITE_INPLACE, -1));
+	  lockfs.reset(new FileStream(DrBaseDirectory + MDFN_PSS + "mednafen.lck", FileStream::MODE_WRITE_INPLACE, -1));
 	 }
 	 catch(MDFN_Error& e)
 	 {
@@ -2443,220 +2632,48 @@ int main(int argc, char *argv[])
 	//
 	//
 	//
-	InstallSignalHandlers();
-	//
-	//
-	//
+	int ret = 0;
 
-	/* Now the fun begins! */
-	/* Run the video and event pumping in the main thread, and create a 
-	   secondary thread to run the game in(and do sound output, since we use
-	   separate sound code which should be thread safe(?)).
-	*/
-	int ret = 0;	
-
-	VTMutex = MThreading::Mutex_Create();
-        EVMutex = MThreading::Mutex_Create();
-
-	VTWakeupSem = MThreading::Sem_Create();
-	STWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for push changes changes from mainloop
-	AUWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for audio changes from mainloop
-	//
-	Video_Init();
-	//
-	JoystickManager::Init();
-	JoystickManager::SetAnalogThreshold(MDFN_GetSettingF("analogthreshold") / 100);
-
-#if 0
-for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
-{
- needie = argv[zgi];
-#endif
-
-	VTReady.store(-1, std::memory_order_release);
-
-	NeedExitNow = 0;
-
-	#if 0
+	try
 	{
-	 int64 start_ticks = Time::MonoUS();
-
-	 for(int i = 0; i < 65536; i++)
-	  MDFN_GetSettingB("gg.forcemono");
-
-	 printf("%lld\n", (long long)(Time::MonoUS() - start_ticks));
-	}
-	#endif
-
- try
- {
-        if(LoadGame(force_module_arg, needie))
-        {
-         NeedVideoSync = 1;	// Set to 1 before creating game thread.
-	 //
-	 //
-	 const uint64 vt_affinity = MDFN_GetSettingUI("affinity.video");
-         const uint64 gt_affinity = MDFN_GetSettingUI("affinity.emu");
-
-	 GameThreadRun = 1;
-	 GameThread = MThreading::Thread_Create(GameLoop, NULL, "MDFN Emulation");
-	 
-	 if(gt_affinity)
-	  MThreading::Thread_SetAffinity(GameThread, gt_affinity);
-
-	 if(vt_affinity)
-	  MThreading::Thread_SetAffinity(NULL, vt_affinity);
-	 
- 	 //psakhis: create thread with semaphore for switches
-	 SwitchThreadRun = 1;
-	 SwitchThread = MThreading::Thread_Create(SwitchLoop, NULL, "MDFN Switch");
-
- 	 //psakhis: create thread with semaphore for audio
-	 AudioThreadRun = 1;
-	 AudioThread = MThreading::Thread_Create(AudioLoop, NULL, "MDFN Audio");
-	 
-	 if(vt_affinity) 	 
-	  MThreading::Thread_SetAffinity(SwitchThread, vt_affinity); 
-	 
-	 if(vt_affinity)
-          MThreading::Thread_SetAffinity(AudioThread, vt_affinity);  
-	 //psakhis end
- 
+	 InstallSignalHandlers();
 	 //
 	 //
 	 //
-	 uint32 pitch32 = CurGame->fb_width; 
-	 MDFN_PixelFormat nf(MDFN_PixelFormat::ABGR32_8888);
 
-         for(int i = 0; i < 2; i++)
+	 /* Now the fun begins! */
+	 /* Run the video and event pumping in the main thread, and create a 
+	    secondary thread to run the game in(and do sound output, since we use
+	    separate sound code which should be thread safe(?)).
+	 */
+	 VTMutex = MThreading::Mutex_Create();
+         EVMutex = MThreading::Mutex_Create();
+
+	 VTWakeupSem = MThreading::Sem_Create();
+	 STWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for push changes changes from mainloop
+	 AUWakeupSem = MThreading::Sem_Create(); //psakhis: semaphore for audio changes from mainloop
+	 //
+	 Video_Init();
+	 //
+	 JoystickManager::Init();
+	 JoystickManager::SetAnalogThreshold(MDFN_GetSettingF("analogthreshold") / 100);
+
+	 #if 0
+	 for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 	 {
-	  SoftFB[i].surface.reset(new MDFN_Surface(NULL, CurGame->fb_width, CurGame->fb_height, pitch32, nf));
-	  SoftFB[i].lw.reset(new int32[CurGame->fb_height]);
-	  memset(SoftFB[i].lw.get(), 0, sizeof(int32) * CurGame->fb_height);
-
-	  SoftFB[i].surface->Fill(0, 0, 0, 0);
-
-	  //
-	  // Debugger step mode, cheat interface, and frame advance mode rely on the previous backbuffer being valid in certain situations.  Initialize some stuff here so that
-	  // reliance will still work even immediately after startup.
-	  SoftFB[i].rect.w = std::min<int32>(16, SoftFB[i].surface->w);
-	  SoftFB[i].rect.h = std::min<int32>(16, SoftFB[i].surface->h);
-	  SoftFB[i].lw[0] = ~0;
-	 }
-
-         FPS_Init(MDFN_GetSettingUI("fps.position"), MDFN_GetSettingUI("fps.scale"), MDFN_GetSettingUI("fps.font"), MDFN_GetSettingUI("fps.textcolor"), MDFN_GetSettingUI("fps.bgcolor"));
-	 if(MDFN_GetSettingB("fps.autoenable"))
-          FPS_ToggleView();
-        }
-	else
-	{
-	 ret = -1;
-	 NeedExitNow = 1;
-	}
- }
- catch(std::exception& e)
- {
-  MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
-  ret = -1;
-  NeedExitNow = 1;
- }
-
-	while(MDFN_LIKELY(!NeedExitNow))
-	{
-	 MThreading::Mutex_Lock(VTMutex);	/* Lock mutex */
-
-	 try
-	 {
-	  if(FatalVideoError > 0)
-	  {
-	   PumpWrap();
-	   NeedVideoSync = 0;
-	   NeededWMInputBehavior_Dirty = false;
-	   VTReady.store(-1, std::memory_order_release);
-	  }
-	  else
-	  {
-	   PumpWrap();
-
-	   if(MDFN_UNLIKELY(NeedVideoSync))
-           {
-	    Video_Sync(CurGame);
-	    PumpWrap();
-	    //
-	    NeedVideoSync = 0;
-           }
-	   // SLK + psakhis     	   
-	   if(MDFN_LIKELY(NeedResolutionChange) && MDFN_LIKELY(NeedResolutionRefresh))
-	   {                                                                                                              
-	    printf("MAIN - VIDEO - Refresh blitter after a resolution change\n");                                                     
-	    Video_BlitRefresh();              
-	    NeedResolutionChange--;
-	    NeedResolutionRefresh--;	   
-	   }                                                                                                              
-	   // SLK + psakhis END  
-	   
-	   if(NeededWMInputBehavior_Dirty)
-	   {
-	    Video_SetWMInputBehavior(NeededWMInputBehavior);
-	    NeededWMInputBehavior_Dirty = false;
-	   }
-
-	   {
-	    const int vtr = VTReady.load(std::memory_order_acquire);	    
-
-            if(vtr >= 0)       
-            {                         	
-             BlitScreen(SoftFB[vtr].surface.get(), &SoftFB[vtr].rect, SoftFB[vtr].lw.get(), VTRotated, SoftFB[vtr].field, VTSSnapshot);
-
-	     // Set to -1 after we're done blitting everything(including on-screen display stuff), and NOT just the emulated system's video surface.
-             VTReady.store(-1, std::memory_order_release);
-            }            
-	     
-	   }
-	  }
-	  //
-	  //
-	  //
-	  if(FatalVideoError < 0)
-	   FatalVideoError = 0;
-	 }
-	 catch(std::exception& e)
-	 {
-	  MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
-	  if(FatalVideoError == 0)
-	  {
- 	   MThreading::Mutex_Unlock(VTMutex);   /* Unlock mutex */ 
-	   FatalVideoError = 1;
-	  }
-	  else
-	  {	  
+	  needie = argv[zgi];
+	 #endif
+	  if(!LoadAndRunGame(force_module_arg, needie))
 	   ret = -1;
-           NeedExitNow = 1;
-	   MThreading::Mutex_Unlock(VTMutex);   /* Unlock mutex */
-	   goto VideoErrorExit;
-	  }
+	 #if 0
 	 }
-
-         MThreading::Mutex_Unlock(VTMutex);   /* Unlock mutex */
-
-	 MThreading::Sem_TimedWait(VTWakeupSem, 1);
+	 #endif
 	}
-	VideoErrorExit:;
-	//
-	//
-	//
-	CloseGame();
-
-	FPS_Kill();
-
-	for(int i = 0; i < 2; i++)
+	catch(std::exception& e)
 	{
-	 SoftFB[i].surface.reset(nullptr);
-	 SoftFB[i].lw.reset(nullptr);
+	 MDFND_OutputNotice(MDFN_NOTICE_ERROR, e.what());
+	 ret = -1;
 	}
-#if 0
-} // end game load test loop
-#endif
 
 	MThreading::Sem_Destroy(VTWakeupSem);
 
@@ -2686,7 +2703,6 @@ for(int zgi = 1; zgi < argc; zgi++)// start game load test loop
 static uint32 last_btime = 0;
 static void UpdateSoundSync(int16 *Buffer, uint32 Count)
 {
-	
  if(Count)
  {
   if(ffnosound && CurGameSpeed != 1)
@@ -2701,7 +2717,7 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
   bool NeedETtoRT = (Count >= (cw * 0.95));
 
   if(NoWaiting && Count > cw)
-  {  	
+  {
    //printf("NW C to M; count=%d, max=%d\n", Count, max);
    Count = cw;
   }
@@ -2732,9 +2748,9 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
     NeedETtoRT = true;
    }
   }
-  
-  Sound_Write(Buffer, Count);      	       	         	  	
-   	
+
+  Sound_Write(Buffer, Count);
+
   if(NeedETtoRT)
    ers.SetETtoRT();
  }
@@ -2742,9 +2758,8 @@ static void UpdateSoundSync(int16 *Buffer, uint32 Count)
  {
   bool nothrottle = MDFN_GetSettingB("nothrottle");
 
-  if(!NoWaiting && !nothrottle && GameThreadRun && !MDFNDnetplay)         
+  if(!NoWaiting && !nothrottle && GameThreadRun && !MDFNDnetplay)
    ers.Sync();
-  
  }
 }
 
@@ -2767,14 +2782,12 @@ void Mednafen::MDFND_MidSync(EmulateSpecStruct *espec, const unsigned flags)
  {
   ers.AddEmuTime((espec->MasterCycles - espec->MasterCycles_DriverProcessed) / CurGameSpeed, false);
   espec->MasterCycles_DriverProcessed = espec->MasterCycles;
-  //     
-  
+  //
   if (use_mister == false) //psakhis
   {
   	UpdateSoundSync(sbuf, scount);
   	espec->SoundBufSize_DriverProcessed += scount;
-  }
-  
+  }  
  }
  else
  {
@@ -2837,17 +2850,18 @@ static bool PassBlit(const int WhichVideoBuffer)
  return true;
 }
 
+
 //
 // Called from game thread.  Pass -1 for WhichVideoBuffer when the frame is skipped.
 //
 static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 {
  bool ret = false;
-  
+
  if(WhichVideoBuffer >= 0)
  {
-   if (use_mister == false)  //psakhis	
-    Debugger_GT_Draw();
+  if (use_mister == false)  //psakhis	
+   Debugger_GT_Draw();
 
 #if 0
   // Wait if we're re-blitting an already blitted frame, such as done while in frame advance or debugger step mode.
@@ -2859,22 +2873,22 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
     return false;
   }
 #endif
-  	           
+
   //
   // Save any pending screen snapshots, save states, and movies before any potential calls to PassBlit().
   //
   MDFN_Surface* surface = SoftFB[WhichVideoBuffer].surface.get();
   MDFN_Rect* rect = &SoftFB[WhichVideoBuffer].rect;
-  int32* lw = SoftFB[WhichVideoBuffer].lw.get();    
+  int32* lw = SoftFB[WhichVideoBuffer].lw.get();
 
- //psakhis mister  
+//psakhis mister  
  
   if (use_mister)
   {
   	  	
 	  if (PoC_start == 0) 
 	  {   
-		mister.CmdInit(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingB("mister.lz4")); 
+		mister.CmdInit(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingB("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan); 
 		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingB("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
 		mister.CmdSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
 		PoC_start = 1;
@@ -2892,6 +2906,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  }
          
          //MDFN_printf(_("rect %d %d %d, %d lw %d\n"),rect->x,rect->w,rect->h,rect->y,lw[0]);  		      
+         mister.SetStartBlit();
          
          int line_width = rect->w;
          
@@ -2900,10 +2915,20 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
                    
 	  if (line_width > 0 && rect->h > 0)
 	  {   
-		   mister.SetStartBlit();	
+		   	
 		   const int32 pitchinpix = surface->pitchinpix;
 		   		   
 		   uint32_t totalPixels = current_game_resolution_w * current_game_resolution_h;
+		   
+		   if (mister.is480p() && current_game_resolution_h < 480)
+		   {
+		   	 totalPixels = totalPixels << 1;
+		   }	 
+		   
+		   if (mister.isInterlaced() && current_game_resolution_h > 240) 
+		   {
+		   	totalPixels = totalPixels >> 1; // div2		   	
+		   } 
 		   
 		   uint32 sizeBuff = totalPixels * 3;       
 		  
@@ -2912,12 +2937,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		     tmp_buffer.resize(sizeBuff);	//this fucking shit is so slow
 		     size_tmp_buffer = sizeBuff;      
 		   }
-		   
-		   if (current_game_resolution_h > 240) 
-		   {
-		   	totalPixels = totalPixels >> 1; // div2		   	
-		   } 
-		 		   		   
+		   		   		 		   		   
 		   uint32 tmp_inc = 0;      		   	  		   
 		   uint32 tmp_pix = 0;
 		   //rgb			   		   		  		   	  			   		   		    
@@ -2953,17 +2973,31 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
      		        if (tmp_pix >= totalPixels)
 		         break;		        		        
 		        
-		        if (current_game_resolution_h > 240) y++; 
+		        if (mister.isInterlaced() && current_game_resolution_h > 240) y++; 
+		        
+		        if (mister.is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
+		        {
+		        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
+		        	{	
+		        		tmp_buffer[tmp_inc] = 0x00;
+		        		tmp_buffer[tmp_inc+1] = 0x00;
+		        		tmp_buffer[tmp_inc+2] = 0x00;
+		        		tmp_inc += 3;    
+		        		tmp_pix++;    	
+		        	}	
+		        }
 		   }
 		    
-		   //MDFN_printf(_("rect %d %d %d, %d lw %d (tmp_inc %d) \n"),rect->x,rect->w,rect->h,rect->y,line_width,tmp_inc);  		      
-		   				 
+		   //MDFN_printf(_("rect %d %d %d, %d lw %d (tmp_inc %d) \n"),rect->x,rect->w,rect->h,rect->y,line_width,tmp_inc);  		  
+		    
+		   mister.CmdAudio((int16_t *)&Buffer[0], Count, CurGame->soundchan);
+		   	//printf("chan %d\n",CurGame->soundchan);			 
 		   if (AudioThreadACK != 1)
 		   {      
 			   BufferAudioThread = Buffer;   
 			   CountAudioThread = Count;    
 			   MThreading::Sem_Post(AUWakeupSem);        
-		   }       
+		   }       		   
 		   mister.CmdBlit((char *)&tmp_buffer[0], MDFN_GetSettingI("mister.vsync"));
 		   mister.SetEndBlit();  		   
 		 
@@ -2973,7 +3007,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
    	  }
    }	   
  //end psakhis mister
-  	   		  
+
   if(pending_snapshot)
    MDFNI_SaveSnapshot(surface, rect, lw);
 
@@ -2984,18 +3018,17 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
    MDFNI_SaveMovie(NULL, surface, rect, lw);
 
   pending_save_movie = pending_snapshot = pending_save_state = false;
-  
  }
 
  if(false == sc_blit_timesync)
  {
   //puts("ABBYNORMAL");
   ret |= PassBlit(WhichVideoBuffer);
- } 
+ }
  
  if (use_mister == false)  //psakhis
-   UpdateSoundSync(Buffer, Count); 
-  
+  UpdateSoundSync(Buffer, Count);
+
  GameThread_HandleEvents();
  Input_Update();
 
@@ -3020,5 +3053,4 @@ void Mednafen::MDFND_SetMovieStatus(StateStatusStruct *status) noexcept
 {
  SendCEvent(CEVT_SET_MOVIE_STATUS, status, NULL);
 }
-
 

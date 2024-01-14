@@ -182,13 +182,12 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
  else if((prev_ossb ^ cur_ossb) & cur_ossb)
   osshot_counter = 0;
 
- //printf("GUN x=%d y=%d frames=%d time=%d\n",nom_coord[0],nom_coord[1],_gunlight_frames,time_elapsed);
+ //printf("GUN x=%d y=%d frames=%d cycle=%d wait=%d time=%d\n",nom_coord[0],nom_coord[1],_gunlight_frames,gunlight_cycle, gunlight_wait, time_elapsed);
  //PSAKHIS  
  if(_gunlight_frames) 
   _gunlight_frames--;
 
- /*#ifdef WIN32*/ //slower with vsync activated, fixed disabling vsync on blit
- #if 0
+ #if 0 // more than 1 frame
  if (state == 0x6c) //trigger
  { 
     /*
@@ -202,7 +201,7 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
    if (!gunlight_cycle && _gunlight_frames && state != prev_state && osshot_counter == -1) 
    {
      gunlight_cycle = true;
-     int nwait = 16;    
+     int nwait = 2;  //1 frame midsync  
      _gunlight_frames = _gunlight_frames + nwait;
      gunlight_wait = nwait;    
    }
@@ -217,18 +216,20 @@ void IODevice_Gun::UpdateInput(const uint8* data, const int32 time_elapsed)
    if(nom_coord[0] && nom_coord[1]) 
    {  state = 0x6c;
       osshot_counter = -1; 	            //apply trigger if coords readed
+      //printf("GUN shoot\n");
    } 
    else
    { 
     state = prev_state;         
     if (gunlight_wait == 0)  
     {             
-      osshot_counter = 0;	      
+      osshot_counter = 0;	
+      //printf("GUN shoot away\n");      
     }  
    }    	     	            	            
  }      
  
- #else 
+ #else //same frame
  
  if (state == 0x6c) //trigger
  {

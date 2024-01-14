@@ -19,7 +19,9 @@
 ** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#pragma GCC optimize ("unroll-loops")
+#if defined(__GNUC__) && !defined(__clang__)
+ #pragma GCC optimize ("unroll-loops")
+#endif
 
 #include "psx.h"
 #include "timer.h"
@@ -323,6 +325,7 @@ void GPU_SetGetVideoParams(MDFNGI* gi, const bool caspect, const int sls, const 
   gi->nominal_width = NCABaseW;
   gi->fb_width = FBWidthNCA;
   gi->lcm_width = gi->nominal_width * 2;     
+   
  }  
 }
 
@@ -820,7 +823,7 @@ static void ProcessFIFO(void)
 	break;
 
   case PS_GPU::INCMD_FBREAD:
-	PSX_WARNING("[GPU] Command FIFO not empty while in FB Read?!");
+	PSX_DBG(PSX_DBG_WARNING | PSX_DBG_GPU, "[GPU] Command FIFO not empty while in FB Read?!\n");
 	return;
 
   case PS_GPU::INCMD_FBWRITE:
@@ -941,7 +944,7 @@ static void ProcessFIFO(void)
   if(!command->func[abr][TexMode])
   {
    if(CB[0])
-    PSX_WARNING("[GPU] Unknown command: %08x, %d", CB[0], scanline);
+    PSX_DBG(PSX_DBG_WARNING | PSX_DBG_GPU, "[GPU] Unknown command: %08x, %d\n", CB[0], scanline);
   }
   else
   {
@@ -954,7 +957,7 @@ static void WriteCB(uint32 InData)
 {
  if(BlitterFIFO.CanRead() >= 0x10 && (InCmd != PS_GPU::INCMD_NONE || (BlitterFIFO.CanRead() - 0x10) >= Commands[BlitterFIFO.Peek() >> 24].fifo_fb_len))
  {
-  PSX_DBG(PSX_DBG_WARNING, "GPU FIFO overflow!!!\n");
+  PSX_DBG(PSX_DBG_WARNING | PSX_DBG_GPU, "[GPU] GPU FIFO overflow!!!\n");
   return;
  }
 
@@ -979,7 +982,7 @@ MDFN_FASTCALL void GPU_Write(const pscpu_timestamp_t timestamp, uint32 A, uint32
    /*
     0x40-0xFF do NOT appear to be mirrors, at least not on my PS1's GPU.
    */
-   default: PSX_WARNING("[GPU] Unknown control command %02x - %06x", command, V);
+   default: PSX_DBG(PSX_DBG_WARNING | PSX_DBG_GPU, "[GPU] Unknown control command %02x - %06x\n", command, V);
 	    break;
 
    case 0x00:	// Reset GPU

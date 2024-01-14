@@ -234,8 +234,8 @@ void OpenGL_Blitter_Shader::CompileShader(CompiledShader &s, const char *vertex_
 	 
 	 //PATCH BRIGHTNESS	 	 
 	 float postprocess_contrast = 1.00;
-	 float postprocess_saturation = 1.00;
-	 gunlight_frames = params.gunlight_flash_length;
+	 float postprocess_saturation = 1.00;	
+	 gunlight_frames = params.gunlight_flash_length; 
 	 std::string frag_prog_processed = PostProcess(frag_prog, params.gunlight_brightness, postprocess_contrast, postprocess_saturation).c_str();
 	 const char *frag_prog_processed_p = frag_prog_processed.c_str();	 	
          //END PATCH

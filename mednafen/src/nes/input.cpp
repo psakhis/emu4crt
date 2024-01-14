@@ -64,7 +64,7 @@ static const IDIISG ZapperIDII =
  { "x_axis", "X Axis", -1, IDIT_POINTER_X },
  { "y_axis", "Y Axis", -1, IDIT_POINTER_Y },
  IDIIS_Button("trigger", "Trigger", 0),
- IDIIS_Button("away_trigger", "Away Trigger", 1),
+ IDIIS_Button("away_trigger", "Away Trigger", 1)
 };
 
 static const IDIISG PowerpadIDII =

@@ -290,7 +290,7 @@ static void SetInput(void)
 
 	 {0x4d68cfb1, NULL, "zapper", "none"},	/* Crime Busters */
 	 {0xbbe40dc4,NULL,"zapper", "none"},	/* Baby Boomer */
-	 {0x24598791,NULL,"zapper", "none"},	/* Duck Hunt */
+	 {0x24598791,NULL,"zapper", "none"},	/* Duck Hunt */	
 	 {0xff24d794,NULL,"zapper", "none"},   /* Hogan's Alley */
 	 {0xbeb8ab01,NULL,"zapper", "none"},	/* Gumshoe */
 	 {0xde8fd935,NULL,"zapper", "none"},	/* To the Earth */

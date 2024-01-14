@@ -499,7 +499,7 @@ static int RawWrite(SexyAL_device *device, const void *data, uint32 len)
  const uint8* data8 = (uint8*)data;
 
  while(len > 0)
- {
+ { 	  
   HRESULT hr;
   UINT32 paddie = 0;
   UINT32 toget;
@@ -530,7 +530,7 @@ static int RawWrite(SexyAL_device *device, const void *data, uint32 len)
  }
 
  for(;;)
- {
+ { 	
   int64 milk = MooCowGoesMoo(device);
 
   if(milk >= -(int64)(device->format.rate / 2000))

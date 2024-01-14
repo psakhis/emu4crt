@@ -201,7 +201,7 @@ static void Emulate(EmulateSpecStruct *espec)
   if(espec->SoundFormatChanged || espec->NeedSoundReverse)
    SpecExAudioExpected = -1;
 
-  tmp_espec.skip = -1;
+  tmp_espec.skip = -1; //probably can skip render
   tmp_espec.NeedSoundReverse = false;
   tmp_espec.VideoFormatChanged = false;
   tmp_espec.SoundFormatChanged = false;

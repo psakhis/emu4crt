@@ -46,7 +46,7 @@ uint32 Sound_CanWrite(void)
 {
  if(!Output)
   return 0;
-
+  
  return Output->CanWrite(Output);
 }
 

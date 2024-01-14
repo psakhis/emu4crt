@@ -81,6 +81,8 @@ class MiSTer
  int  GetVSyncDif(void); //raster dif. between emulator and MiSTer (usec)
  
  int GetField(void);
+ bool isInterlaced(void);
+ bool is480p(void);
  
  private:
  

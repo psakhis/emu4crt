@@ -93,6 +93,30 @@ static void SSCleanup(void)
   }
 }
 
+template<typename T>
+static void CopyIntoPreviewSurf(void)
+{
+ T* psp = PreviewSurface->pix<T>();
+
+ psp += PreviewSurface->pitchinpix;
+ psp++;
+
+ if(StateStatus->gfx)
+ {
+  for(uint32 y = 0; y < StateStatus->h; y++)
+  {
+   uint8 *src_row = StateStatus->gfx + y * StateStatus->w * 3;
+
+   for(uint32 x = 0; x < StateStatus->w; x++)
+   {
+    psp[x] = PreviewSurface->MakeColor(src_row[0], src_row[1], src_row[2], 0xFF);
+    src_row += 3;
+   }
+   psp += PreviewSurface->pitchinpix;
+  }
+ }
+}
+
 // TODO: Handle memory allocation errors.
 void DrawSaveStates(int32 screen_w, int32 screen_h, double exs, double eys, const MDFN_PixelFormat& pf)
 {
@@ -113,24 +137,10 @@ void DrawSaveStates(int32 screen_w, int32 screen_h, double exs, double eys, cons
 
    MDFN_DrawFillRect(PreviewSurface, 0, 0, StateStatus->w + 2, StateStatus->h + 2, PreviewSurface->MakeColor(0x00, 0x00, 0x9F, 0xFF), PreviewSurface->MakeColor(0x00, 0x00, 0x00, 0x80));
 
-   uint32 *psp = PreviewSurface->pixels;
-
-   psp += PreviewSurface->pitchinpix;
-   psp++;
-
-   if(StateStatus->gfx)
+   switch(PreviewSurface->format.opp)
    {
-    for(uint32 y = 0; y < StateStatus->h; y++)
-    {
-     uint8 *src_row = StateStatus->gfx + y * StateStatus->w * 3;
-
-     for(uint32 x = 0; x < StateStatus->w; x++)
-     {
-      psp[x] = PreviewSurface->MakeColor(src_row[0], src_row[1], src_row[2], 0xFF);
-      src_row += 3;
-     }
-     psp += PreviewSurface->pitchinpix;
-    }
+    case 2: CopyIntoPreviewSurf<uint16>(); break;
+    case 4: CopyIntoPreviewSurf<uint32>(); break;
    }
 
    if(!TextSurface)
@@ -161,7 +171,7 @@ void DrawSaveStates(int32 screen_w, int32 screen_h, double exs, double eys, cons
  } // end if(StateStatus)
 
  if(PreviewSurface)
-{
+ {
   MDFN_Rect tdrect, drect;
 
   int meow = ((screen_w / CurGame->nominal_width) + 1) / 2;
@@ -169,7 +179,7 @@ void DrawSaveStates(int32 screen_w, int32 screen_h, double exs, double eys, cons
 
   tdrect.w = TextRect.w * meow;
   tdrect.h = TextRect.h * meow;
-  tdrect.x = (screen_w - tdrect.w) / 2; 
+  tdrect.x = (screen_w - tdrect.w) / 2;
   // SLK - Custom savestate selection OSD
   if(use_native_resolution || use_super_resolution || use_switchres)
     {
@@ -200,20 +210,19 @@ void DrawSaveStates(int32 screen_w, int32 screen_h, double exs, double eys, cons
     }
   else  // native OSD display
     {
-      tdrect.y = screen_h - tdrect.h;
-
-      BlitOSD(TextSurface, &TextRect, &tdrect);
-
-      drect.w = PreviewRect.w * meow;
-      drect.h = PreviewRect.h * meow;
-      drect.x = (screen_w - drect.w) / 2;
-      drect.y = screen_h - drect.h - tdrect.h - 4;
-
-      BlitOSD(PreviewSurface, &PreviewRect, &drect);
+	  tdrect.y = screen_h - tdrect.h;
+	
+	  BlitOSD(TextSurface, &TextRect, &tdrect);
+	
+	  drect.w = PreviewRect.w * meow;
+	  drect.h = PreviewRect.h * meow;
+	  drect.x = (screen_w - drect.w) / 2;
+	  drect.y = screen_h - drect.h - tdrect.h - 4;
+	
+	  BlitOSD(PreviewSurface, &PreviewRect, &drect);
     }
   // SLK - end
-  }
-
+ }
 }
 
 void MT_SetStateStatus(StateStatusStruct *status)

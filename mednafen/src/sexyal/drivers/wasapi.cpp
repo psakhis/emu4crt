@@ -488,7 +488,7 @@ static int RawWrite(SexyAL_device *device, const void *data, uint32 len)
  const uint8* data8 = (uint8*)data;
 
  while(len > 0)
- {
+ { 	
   int32 bytes_in = w->BufferWBC - w->BufferRBC;
   int32 cwt = w->BufferByteSizeSuper - bytes_in;
   int32 to_copy = std::min<int32>(cwt, len);
