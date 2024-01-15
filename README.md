@@ -40,7 +40,7 @@ In general, nes core Mednafen auto detect zapper with crc rom header, in other c
   * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
-emu4crt can be use in three modes:
+emu4crt can be use in four modes:
 
 * `Native Resolution`: Same resolution as emulated system.
    More custom resolution are required (see below)
