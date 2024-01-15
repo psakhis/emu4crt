@@ -52,6 +52,9 @@ emu4crt can be use in three modes:
 * `Switchres`: Resolutions changes with libswitchres library by @Calamity and Linux SDL/KMS by @Substring 
   More information on their github https://github.com/antonioginer/switchres 
 
+* `MiSTer`: Use MiSTer as analog GPU
+  More information on https://github.com/psakhis/Groovy_MiSTer
+
 ## Required resolutions (not requiered for Switchres mode)
 
 ### `Native resolutions`
@@ -106,6 +109,7 @@ To enable resolution switch, use "video.resolution_switch" parameter in mednafen
 * video.resolution_switch native -> to use native resolution mode
 * video.resolution_switch super  -> to use super resolution mode
 * video.resolution_switch switchres -> to use libswitchres mode (you need to configure switchres.ini properly!!)
+* video.resolution_switch mister -> to use mister mode (you need to configure switchres.ini properly!!)
 * video.resolution_switch 0 -> to disable resolution switch [DEFAULT MODE]
 
 * video.fs 1 -> fullscreen mode
