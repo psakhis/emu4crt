@@ -1,4 +1,4 @@
-# **Mednafen 1.31 - UNSTABLE - emu4crt - A20**
+# **Mednafen 1.32 - UNSTABLE - emu4crt - A22**
 
 ### Important: 
 This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
