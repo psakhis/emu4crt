@@ -1552,8 +1552,8 @@ static int SwitchLoop(void *arg)
 	  {     
 	    if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated)) {  
 	      if (current_game_rotated != CurGame->rotated) 
-	        printf("SWITCH - Activated - Rotate detected\n");   	        	                                                                                                                                                               		
-	      printf("SWITCH - Activated - Current resolution %dx%d - Changing to %dx%d@%f\n",current_game_resolution_w,current_game_resolution_h,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
+	        MDFN_printf(_("SWITCH - Activated - Rotate detected\n"));   	        	                                                                                                                                                               		
+	      MDFN_printf(_("SWITCH - Activated - Current resolution %dx%d - Changing to %dx%d@%f\n"),current_game_resolution_w,current_game_resolution_h,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);                                                                                                                                                           		
 	      NeedResolutionRefresh = Video_ChangeResolution(CurGame,resolution_to_change_w,resolution_to_change_h,resolution_to_change_vfreq);		    	    	      	      	      
 	    } 
 	    else {
