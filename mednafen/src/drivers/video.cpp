@@ -1349,7 +1349,9 @@ void Video_Sync(MDFNGI *gi)
  video_settings.shader_params.goat_slen = MDFN_GetSettingB(snp + "shader.goat.slen");
  video_settings.shader_params.goat_fprog = MDFN_GetSettingB(snp + "shader.goat.fprog");
  //
-
+ video_settings.shader_params.gunlight_brightness = MDFN_GetSettingF(snp + "shader.gunlight.brightness"); //psakhis
+ video_settings.shader_params.gunlight_flash_length = MDFN_GetSettingUI(snp + "shader.gunlight.flash_length"); //psakhis
+ 
  video_settings.fullscreen = MDFN_GetSettingB("video.fs");
  video_settings.fs_display = MDFN_GetSettingI("video.fs.display");
  vdriver = MDFN_GetSettingI("video.driver");
@@ -2287,6 +2289,17 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
 #endif
 
     if(ogl_blitter)
+     ogl_blitter->Blit(&bah_surface, &boohoo_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
+    else
+    {
+     SDL_to_MDFN_Surface_Wrapper m_surface(screen);
+
+     MDFN_StretchBlitSurface(&bah_surface, boohoo_rect, &m_surface, dest_rect, false, video_settings.scanlines, &eff_src_rect, rotated, InterlaceField);
+    }
+   }
+   else // No special scaler:
+   {
+    if(ogl_blitter)
     { 
      //PSAKHIS    		                       
      if ((ogl_blitter_gunlight) && (gunlight_pending_frames))  {  
@@ -2302,17 +2315,6 @@ static void SubBlit(const MDFN_Surface *source_surface, const MDFN_Rect &src_rec
       //printf("no BLITET\n");       
      } 
     } 
-    else
-    {
-     SDL_to_MDFN_Surface_Wrapper m_surface(screen);
-
-     MDFN_StretchBlitSurface(&bah_surface, boohoo_rect, &m_surface, dest_rect, false, video_settings.scanlines, &eff_src_rect, rotated, InterlaceField);
-    }
-   }
-   else // No special scaler:
-   {
-    if(ogl_blitter)
-     ogl_blitter->Blit(eff_source_surface, &eff_src_rect, &dest_rect, &eff_src_rect, InterlaceField, evideoip, rotated);
     else
     {
      SDL_to_MDFN_Surface_Wrapper m_surface(screen);
