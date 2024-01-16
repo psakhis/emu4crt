@@ -1,4 +1,4 @@
-# **Mednafen 1.31 - UNSTABLE - emu4crt - A20**
+# **Mednafen 1.32 - UNSTABLE - emu4crt - A22**
 
 ### Important: 
 This is is updated project of @Silmalik emu4crt. All information on https://github.com/emu4crt/files Thanks for it!!
@@ -40,7 +40,7 @@ In general, nes core Mednafen auto detect zapper with crc rom header, in other c
   * OS: Windows 32/64bits or linux (GroovyArcade is recommended)
   * Video display: OpenGL compatible (the only Mednafen tested renderer).
   
-emu4crt can be use in three modes:
+emu4crt can be use in four modes:
 
 * `Native Resolution`: Same resolution as emulated system.
    More custom resolution are required (see below)
@@ -51,6 +51,9 @@ emu4crt can be use in three modes:
 
 * `Switchres`: Resolutions changes with libswitchres library by @Calamity and Linux SDL/KMS by @Substring 
   More information on their github https://github.com/antonioginer/switchres 
+
+* `MiSTer`: Use MiSTer as analog GPU
+  More information on https://github.com/psakhis/Groovy_MiSTer
 
 ## Required resolutions (not requiered for Switchres mode)
 
@@ -106,6 +109,7 @@ To enable resolution switch, use "video.resolution_switch" parameter in mednafen
 * video.resolution_switch native -> to use native resolution mode
 * video.resolution_switch super  -> to use super resolution mode
 * video.resolution_switch switchres -> to use libswitchres mode (you need to configure switchres.ini properly!!)
+* video.resolution_switch mister -> to use mister mode (you need to configure switchres.ini properly!!)
 * video.resolution_switch 0 -> to disable resolution switch [DEFAULT MODE]
 
 * video.fs 1 -> fullscreen mode
