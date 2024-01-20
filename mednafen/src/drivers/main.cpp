@@ -2925,7 +2925,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   	 totalPixels = totalPixels << 1;
 		   }	 
 		   
-		   if (mister.isInterlaced() && current_game_resolution_h > 240) 
+		   if ((mister.isInterlaced() && current_game_resolution_h > 240) || (mister.isDownscaled())) 
 		   {
 		   	totalPixels = totalPixels >> 1; // div2		   	
 		   } 
@@ -2973,7 +2973,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
      		        if (tmp_pix >= totalPixels)
 		         break;		        		        
 		        
-		        if (mister.isInterlaced() && current_game_resolution_h > 240) y++; 
+		        if ((mister.isInterlaced() && current_game_resolution_h > 240) || mister.isDownscaled()) y++; 
 		        
 		        if (mister.is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
 		        {
@@ -2986,12 +2986,9 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        		tmp_pix++;    	
 		        	}	
 		        }
-		   }
+		   }		    		  		  
 		    
-		   //MDFN_printf(_("rect %d %d %d, %d lw %d (tmp_inc %d) \n"),rect->x,rect->w,rect->h,rect->y,line_width,tmp_inc);  		  
-		    
-		   mister.CmdAudio((int16_t *)&Buffer[0], Count, CurGame->soundchan);
-		   	//printf("chan %d\n",CurGame->soundchan);			 
+		   mister.CmdAudio((int16_t *)&Buffer[0], Count, CurGame->soundchan);		   				 
 		   if (AudioThreadACK != 1)
 		   {      
 			   BufferAudioThread = Buffer;   

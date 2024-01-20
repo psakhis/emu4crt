@@ -83,15 +83,18 @@ class MiSTer
  int GetField(void);
  bool isInterlaced(void);
  bool is480p(void);
+ bool isDownscaled(void);
  
  private:
  
  bool lz4_compress = false;
  uint32_t frame = 0;
+ uint8_t  frameField = 0;
  uint16_t width = 0;
  uint16_t height = 0;
  uint16_t lines = 0; //vtotal
  uint8_t  interlaced = 0;
+ uint8_t  downscaled = 0;
  uint32_t widthTime = 0; //usec
  uint32_t frameTime = 0; //usec
   

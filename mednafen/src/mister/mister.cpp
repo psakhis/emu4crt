@@ -180,8 +180,8 @@ void MiSTer::CmdInit(const char* mister_host, short mister_port, bool lz4_frames
    frameGPU = 0;
    vcountGPU = 0;  
    interlaced = 0;
-   fpga_audio = 0;
-   firstField = false;
+   fpga_audio = 0; 
+   downscaled = 0;  
 }
 
 void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
@@ -216,10 +216,10 @@ void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
    		retSR = retSR2;
    	}
    }
-   
-   if (retSR && swres_result.width >= w && swres_result.height >= h) 
+     
+   if (retSR) 
    {   	     	
-	   char buffer[27];   
+	   char buffer[26];   
 	   
 	   double px = double(swres_result.pclock) / 1000000.0;
 	   uint16_t udp_hactive = swres_result.width;;			      
@@ -236,20 +236,21 @@ void MiSTer::CmdSwitchres(int w, int h, double vfreq, int orientation)
 	   height = udp_vactive;
 	   lines = udp_vtotal;	  
 	   interlaced = udp_interlace;
-	   
-	   if (interlaced)
-	   {
-	   	firstField = true;	   	  
-	   } 
-	   
+	   downscaled = 0;
+	   	      
 	   widthTime = round((double) udp_htotal * (1 / px)); //in usec, time to raster 1 line
            frameTime = widthTime * udp_vtotal;
            
            if (interlaced)
            { 
+           	frameField = 0;
            	frameTime = frameTime >> 1;
            }	
-   
+   	   
+   	   if (h > height) 
+   	   {
+   	   	downscaled = 1;
+   	   }
 	   //printf("[DEBUG] Sending CMD_SWITCHRES...\n"); 
 	   buffer[0] = CMD_SWITCHRES;             
 	   memcpy(&buffer[1],&px,sizeof(px));
@@ -272,7 +273,7 @@ void MiSTer::CmdBlit(char *bufferFrame, uint16_t vsync)
 {          	 	     
    char buffer[9];   
    
-   frame++;
+   frame++;   
    
    // 16 or 32 lines blockSize
    uint8_t blockLinesFactor = (width > 384) ? 5	: 4;
@@ -448,8 +449,8 @@ int MiSTer::GetVSyncDif(void)
   {	  	
   	//horror patch if emulator freezes to align frame counter
   	if ((frameEcho + 1) < frameGPU) 
-  	{
-  	 	frame = frameGPU + 1;
+  	{  		
+  	 	frame = frameGPU + 1;  	  	 		 		
   	}
   	
    	uint32_t vcount1 = ((frameEcho - 1) * lines + vcountEcho) >> interlaced;
@@ -469,16 +470,10 @@ int MiSTer::GetField(void)
 	int field = 0;
 	if (interlaced)
 	{
-		if (firstField)
-		{
-			field = (width > 500) ? 1 : 0; //psx dif mega??
-		}
-		else if (vcountGPU % 2 != 0)
-		{
-			field = (width > 500) ? 0 : 1;		
-		}	
+		frameField = !frameField;
+		field = frameField;		
 	}
-	firstField = false;	   	  
+   	  
 	return field;
 }
 
@@ -490,6 +485,11 @@ bool MiSTer::isInterlaced(void)
 bool MiSTer::is480p(void)
 {
 	return ((height > 240 && !interlaced) || (width < height));
+}
+
+bool MiSTer::isDownscaled(void)
+{
+	return downscaled;
 }
 
 //Private
