@@ -39,11 +39,6 @@
 #define CMD_GET_STATUS 5
 #define CMD_BLIT_VSYNC 6
 
-
-#define MAX_BUFFER_WIDTH 1024
-#define MAX_BUFFER_HEIGHT 768
-#define MAX_LZ4_BLOCK   61440
-
 typedef union
 {
   struct
@@ -67,7 +62,7 @@ class MiSTer
  ~MiSTer(); 
 
  void CmdClose(void);
- void CmdInit(const char* mister_host, short mister_port, bool lz4_frames, uint32_t sound_rate, uint8_t sound_chan);
+ void CmdInit(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan);
  void CmdSwitchres(int w, int h, double vfreq, int orientation);
  void CmdBlit(char *bufferFrame, uint16_t vsync); 
  void CmdAudio(const void *bufferFrame, uint32_t sizeSound, uint8_t soundchan);
@@ -84,14 +79,19 @@ class MiSTer
  bool isInterlaced(void);
  bool is480p(void);
  bool isDownscaled(void);
+ uint16_t GetWidth(void);
+ uint16_t GetHeight(void);  
  
  private:
  
- bool lz4_compress = false;
+ uint8_t  lz4_compress = 0;
  uint32_t frame = 0;
  uint8_t  frameField = 0;
  uint16_t width = 0;
  uint16_t height = 0;
+ uint16_t width_core;
+ uint16_t height_core;
+ double   vfreq_core;
  uint16_t lines = 0; //vtotal
  uint8_t  interlaced = 0;
  uint8_t  downscaled = 0;
@@ -156,17 +156,13 @@ class MiSTer
  
  
  //LZ4
- char m_fb[MAX_BUFFER_HEIGHT * MAX_BUFFER_WIDTH * 3];
- char m_fb_compressed[MAX_BUFFER_HEIGHT * MAX_BUFFER_WIDTH * 3];
- //char inp_buf[2][MAX_BUFFER_WIDTH * 16 * 3 + 1];
- char inp_buf[2][MAX_LZ4_BLOCK + 1];
-
+ int lz4_max_dst_size = 0; 
+ char* lz4_compressed_data = NULL;
  
  //Internal functions 
  //UDP
  void Send(void *cmd, int cmdSize);
  void SendMTU(char *buffer, int bytes_to_send, int chunk_max_size);
- void SendLZ4(char *buffer, int bytes_to_send, int block_size);
  void ReceiveBlitACK(void);
 
  //Time
