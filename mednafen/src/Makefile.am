@@ -165,7 +165,6 @@ include compress/Makefile.am.inc
 include hash/Makefile.am.inc
 include lzma/Makefile.am.inc
 include libchdr/Makefile.am.inc
-include lz4/Makefile.am.inc
 include mister/Makefile.am.inc
 
 if HAVE_EXTERNAL_LZO2

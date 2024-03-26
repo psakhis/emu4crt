@@ -67,8 +67,6 @@
 #include <mednafen/AtomicFIFO.h>
 
 static int PoC_start = 0; //psakhis mister
-static std::vector<uint8> tmp_buffer; //psakhis mister
-static uint32 size_tmp_buffer = 0; //psakhis mister 
 
 static bool SuppressErrorPopups;	// Set from env variable "MEDNAFEN_NOPOPUPS"
 
@@ -1262,7 +1260,7 @@ static void CloseGame(void)
 	
 	if (use_mister)
 	{
-		mister.CmdClose();
+		mister.Close();
 	}
 	
 	//psakhis end
@@ -1344,8 +1342,7 @@ bool DebuggerFudge(void)
 static int GameLoop(void *arg)
 {
 	while(GameThreadRun)
-	{
-	 mister.SetStartEmulate(); //psakhis	
+	{	 
 	 int16 *sound;
 	 int32 ssize;
 	 uint32 mcycs;
@@ -1442,8 +1439,7 @@ static int GameLoop(void *arg)
 	 }
 	 else
           MDFNI_Emulate(&espec);
-
-	 mister.SetEndEmulate(); //psakhis
+	 
 
 	 //psakhis: activate change on switch thread 	 
 	 if (!NeedResolutionChange && resolution_to_change && (use_native_resolution || use_super_resolution || use_switchres)) {
@@ -2888,9 +2884,9 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
   	  	
 	  if (PoC_start == 0) 
 	  {   
-		mister.CmdInit(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan); 
+		mister.Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan); 
 		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
-		mister.CmdSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
+		mister.Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
 		PoC_start = 1;
 	  }  
   
@@ -2899,14 +2895,13 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  	resolution_to_change = false;
 	  	if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated))   
 	  	{
-			 mister.CmdSwitchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
+			 mister.Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
 			 current_game_resolution_w = resolution_to_change_w;
 			 current_game_resolution_h = resolution_to_change_h;						 
 		} 
 	  }
          
-         //MDFN_printf(_("rect %d %d %d, %d lw %d\n"),rect->x,rect->w,rect->h,rect->y,lw[0]);  		      
-         mister.SetStartBlit();
+         //MDFN_printf(_("rect %d %d %d, %d lw %d\n"),rect->x,rect->w,rect->h,rect->y,lw[0]);  		                                              		 
          
          int line_width = rect->w;
          
@@ -2920,7 +2915,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   		   
 		   uint32_t totalPixels = current_game_resolution_w * current_game_resolution_h;
 		   
-		   if (mister.is480p() && current_game_resolution_h < 480)
+		   if (mister.is480p() && current_game_resolution_h < 480) //prepare to add scanlines
 		   {
 		   	 totalPixels = totalPixels << 1;
 		   }	 
@@ -2930,18 +2925,11 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   	totalPixels = totalPixels >> 1; // div2		   	
 		   } 
 		   
-		   uint32 sizeBuff = totalPixels * 3;       
-		  
-		   if (sizeBuff > size_tmp_buffer)
-		   {		   
-		     tmp_buffer.resize(sizeBuff);	//this fucking shit is so slow
-		     size_tmp_buffer = sizeBuff;      
-		   }
-		   		   		 		   		   
+		   char *tmp_buffer = mister.getPBufferBlit();		   		 		   		   
 		   uint32 tmp_inc = 0;      		   	  		   
 		   uint32 tmp_pix = 0;
 		   //rgb			   		   		  		   	  			   		   		    
-		   for(int y = mister.GetField(); y < rect->h; y++)
+		   for(int y = mister.getField(); y < rect->h; y++)
 		   {   	 		   			   			   	 	 
 		  	line_width = rect->w;	
 		        int x_base = rect->x;
@@ -2962,7 +2950,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		
 		        	tmp_buffer[tmp_inc] = b;
 		        	tmp_buffer[tmp_inc+1] = g;
-		        	tmp_buffer[tmp_inc+2] = r;
+		        	tmp_buffer[tmp_inc+2] = r;		        	
 		        	tmp_inc += 3;    
 		        	tmp_pix++;    	
 		        	//printf("RGB[%d]:%02hhX %02hhX %02hhX ",x,r,g,b);
@@ -2987,21 +2975,20 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        	}	
 		        }
 		   }		    		  		  
-		    
-		   mister.CmdAudio((int16_t *)&Buffer[0], Count, CurGame->soundchan);		   				 
+		   
+		   char *tmp_audio = mister.getPBufferAudio();	
+		   uint16_t bytesSound = Count << CurGame->soundchan;       
+         	   memcpy(&tmp_audio[0], Buffer, bytesSound);
+         	   mister.Audio(bytesSound);		   		 
+		   
 		   if (AudioThreadACK != 1)
 		   {      
 			   BufferAudioThread = Buffer;   
 			   CountAudioThread = Count;    
 			   MThreading::Sem_Post(AUWakeupSem);        
-		   }       
-		  // mister.SetStartBlit();		   
-		   mister.CmdBlit((char *)&tmp_buffer[0], MDFN_GetSettingI("mister.vsync"));
-		   mister.SetEndBlit();  		   
-		 
-		   mister.Sync();
-	  
-	
+		   }       		 		   
+		   mister.Blit(MDFN_GetSettingI("mister.vsync"));		  		   		 
+		   mister.Sync();	  	
    	  }
    }	   
  //end psakhis mister
