@@ -199,10 +199,13 @@ void Init(void)
    JoystickDrivers.push_back(main_driver);
   }
   //psakhis
-  mister_driver = JoystickDriver_Mister_New();
-  if(mister_driver != NULL)
+  if (MDFN_GetSettingI("video.resolution_switch") == 4)
   {
-   JoystickDrivers.push_back(mister_driver);	
+   mister_driver = JoystickDriver_Mister_New();
+   if(mister_driver != NULL)
+   {
+    JoystickDrivers.push_back(mister_driver);	
+   }
   }
   //end psakhis
   for(unsigned jd = 0; jd < JoystickDrivers.size(); jd++)
