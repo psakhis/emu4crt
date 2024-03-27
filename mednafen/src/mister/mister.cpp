@@ -35,8 +35,8 @@ void MiSTer::Close(void)
 
 void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan)
 {   	
-   gmw_init(mister_host, mister_port, lz4_frames, sound_rate, sound_chan, 0);
-
+   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, 0);
+   
    lz4_compress = lz4_frames;
    width_core = 0;	   	   
    height_core = 0;
@@ -44,7 +44,9 @@ void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames
    interlaced = 0;
    buffer_prog = 1; 
    downscaled = 0;  
-   is480 = 0;      
+   is480 = 0;     
+   
+   gmw_set_log_level(0); 
 }
 
 void MiSTer::Switchres(int w, int h, double vfreq, int orientation)
@@ -105,7 +107,7 @@ void MiSTer::Blit(uint16_t vsync)
 {    
    frame++;      
    gmw_fpgaStatus status;
-   gmw_refreshStatus(&status);
+   gmw_getStatus(&status);
    if (status.frame > frame) frame = status.frame;  
    gmw_blit(frame, vsync, 0);
 }
@@ -129,7 +131,7 @@ int MiSTer::getField(void)
    if (!buffer_prog)
    {
    	gmw_fpgaStatus status;
-        gmw_refreshStatus(&status);
+        gmw_getStatus(&status);
         frameField = (status.frame > frame) ? status.vgaF1 : !frameField;         
 	field = frameField;		
    }

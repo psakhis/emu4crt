@@ -28,6 +28,8 @@
 
 #include "Joystick.h"
 
+#include "Joystick_Mister.h" //psakhis
+
 #ifdef HAVE_SDL
  #include "Joystick_SDL.h"
 #endif
@@ -169,7 +171,8 @@ void Init(void)
 {
  JoystickDriver *main_driver = NULL;
  JoystickDriver *hicp_driver = NULL;
-
+ JoystickDriver *mister_driver = NULL; //psakhis
+ 
  MDFNI_printf(_("Initializing joysticks...\n"));
  MDFN_indent(1);
 
@@ -185,7 +188,7 @@ void Init(void)
   #elif defined(HAVE_SDL)
   main_driver = JoystickDriver_SDL_New();
   #endif
-
+  
   if(hicp_driver != NULL)
   {
    JoystickDrivers.push_back(hicp_driver);
@@ -195,7 +198,13 @@ void Init(void)
   {
    JoystickDrivers.push_back(main_driver);
   }
-
+  //psakhis
+  mister_driver = JoystickDriver_Mister_New();
+  if(mister_driver != NULL)
+  {
+   JoystickDrivers.push_back(mister_driver);	
+  }
+  //end psakhis
   for(unsigned jd = 0; jd < JoystickDrivers.size(); jd++)
   {
    for(unsigned i = 0; i < JoystickDrivers[jd]->NumJoysticks(); i++)
@@ -255,9 +264,16 @@ void Init(void)
    delete hicp_driver;
    hicp_driver = NULL;
   }
-
+  //psakhis
+  if(mister_driver != NULL)
+  {
+   delete mister_driver;
+   mister_driver = NULL;
+  }
+  //end psakhis
   JoystickDrivers.clear();
   JoystickCache.clear();
+  
  }
  MDFN_indent(-1);
 }

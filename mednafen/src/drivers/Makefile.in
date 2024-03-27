@@ -134,12 +134,12 @@ libmdfnsdl_a_AR = $(AR) $(ARFLAGS)
 libmdfnsdl_a_LIBADD =
 am__libmdfnsdl_a_SOURCES_DIST = main.cpp args.cpp help.cpp ers.cpp \
 	sound.cpp netplay.cpp input.cpp mouse.cpp keyboard.cpp \
-	Joystick.cpp Joystick_SDL.cpp Joystick_Linux.cpp \
-	Joystick_XInput.cpp Joystick_DX5.cpp TextEntry.cpp console.cpp \
-	cheat.cpp fps.cpp video-state.cpp remote.cpp rmdui.cpp \
-	opengl.cpp shader.cpp nongl.cpp nnx.cpp video.cpp \
-	hqxx-common.cpp hq2x.cpp hq3x.cpp hq4x.cpp scale2x.c scale3x.c \
-	scalebit.c 2xSaI.cpp debugger.cpp gfxdebugger.cpp \
+	Joystick.cpp Joystick_SDL.cpp Joystick_Mister.cpp \
+	Joystick_Linux.cpp Joystick_XInput.cpp Joystick_DX5.cpp \
+	TextEntry.cpp console.cpp cheat.cpp fps.cpp video-state.cpp \
+	remote.cpp rmdui.cpp opengl.cpp shader.cpp nongl.cpp nnx.cpp \
+	video.cpp hqxx-common.cpp hq2x.cpp hq3x.cpp hq4x.cpp scale2x.c \
+	scale3x.c scalebit.c 2xSaI.cpp debugger.cpp gfxdebugger.cpp \
 	memdebugger.cpp logdebugger.cpp prompt.cpp
 @HAVE_LINUX_JOYSTICK_TRUE@am__objects_1 = Joystick_Linux.$(OBJEXT)
 @WIN32_TRUE@am__objects_2 = Joystick_XInput.$(OBJEXT) \
@@ -156,12 +156,13 @@ am__libmdfnsdl_a_SOURCES_DIST = main.cpp args.cpp help.cpp ers.cpp \
 am_libmdfnsdl_a_OBJECTS = main.$(OBJEXT) args.$(OBJEXT) help.$(OBJEXT) \
 	ers.$(OBJEXT) sound.$(OBJEXT) netplay.$(OBJEXT) \
 	input.$(OBJEXT) mouse.$(OBJEXT) keyboard.$(OBJEXT) \
-	Joystick.$(OBJEXT) Joystick_SDL.$(OBJEXT) $(am__objects_1) \
-	$(am__objects_2) TextEntry.$(OBJEXT) console.$(OBJEXT) \
-	cheat.$(OBJEXT) fps.$(OBJEXT) video-state.$(OBJEXT) \
-	remote.$(OBJEXT) rmdui.$(OBJEXT) opengl.$(OBJEXT) \
-	shader.$(OBJEXT) nongl.$(OBJEXT) nnx.$(OBJEXT) video.$(OBJEXT) \
-	$(am__objects_3) $(am__objects_4)
+	Joystick.$(OBJEXT) Joystick_SDL.$(OBJEXT) \
+	Joystick_Mister.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
+	TextEntry.$(OBJEXT) console.$(OBJEXT) cheat.$(OBJEXT) \
+	fps.$(OBJEXT) video-state.$(OBJEXT) remote.$(OBJEXT) \
+	rmdui.$(OBJEXT) opengl.$(OBJEXT) shader.$(OBJEXT) \
+	nongl.$(OBJEXT) nnx.$(OBJEXT) video.$(OBJEXT) $(am__objects_3) \
+	$(am__objects_4)
 libmdfnsdl_a_OBJECTS = $(am_libmdfnsdl_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -179,10 +180,11 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/2xSaI.Po ./$(DEPDIR)/Joystick.Po \
 	./$(DEPDIR)/Joystick_DX5.Po ./$(DEPDIR)/Joystick_Linux.Po \
-	./$(DEPDIR)/Joystick_SDL.Po ./$(DEPDIR)/Joystick_XInput.Po \
-	./$(DEPDIR)/TextEntry.Po ./$(DEPDIR)/args.Po \
-	./$(DEPDIR)/cheat.Po ./$(DEPDIR)/console.Po \
-	./$(DEPDIR)/debugger.Po ./$(DEPDIR)/ers.Po ./$(DEPDIR)/fps.Po \
+	./$(DEPDIR)/Joystick_Mister.Po ./$(DEPDIR)/Joystick_SDL.Po \
+	./$(DEPDIR)/Joystick_XInput.Po ./$(DEPDIR)/TextEntry.Po \
+	./$(DEPDIR)/args.Po ./$(DEPDIR)/cheat.Po \
+	./$(DEPDIR)/console.Po ./$(DEPDIR)/debugger.Po \
+	./$(DEPDIR)/ers.Po ./$(DEPDIR)/fps.Po \
 	./$(DEPDIR)/gfxdebugger.Po ./$(DEPDIR)/help.Po \
 	./$(DEPDIR)/hq2x.Po ./$(DEPDIR)/hq3x.Po ./$(DEPDIR)/hq4x.Po \
 	./$(DEPDIR)/hqxx-common.Po ./$(DEPDIR)/input.Po \
@@ -441,10 +443,10 @@ DEFAULT_INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_bui
 noinst_LIBRARIES = libmdfnsdl.a
 libmdfnsdl_a_SOURCES = main.cpp args.cpp help.cpp ers.cpp sound.cpp \
 	netplay.cpp input.cpp mouse.cpp keyboard.cpp Joystick.cpp \
-	Joystick_SDL.cpp $(am__append_1) $(am__append_2) TextEntry.cpp \
-	console.cpp cheat.cpp fps.cpp video-state.cpp remote.cpp \
-	rmdui.cpp opengl.cpp shader.cpp nongl.cpp nnx.cpp video.cpp \
-	$(am__append_3) $(am__append_4)
+	Joystick_SDL.cpp Joystick_Mister.cpp $(am__append_1) \
+	$(am__append_2) TextEntry.cpp console.cpp cheat.cpp fps.cpp \
+	video-state.cpp remote.cpp rmdui.cpp opengl.cpp shader.cpp \
+	nongl.cpp nnx.cpp video.cpp $(am__append_3) $(am__append_4)
 all: all-am
 
 .SUFFIXES:
@@ -497,6 +499,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick_DX5.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick_Linux.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick_Mister.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick_SDL.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Joystick_XInput.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TextEntry.Po@am__quote@ # am--include-marker
@@ -699,6 +702,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/Joystick.Po
 	-rm -f ./$(DEPDIR)/Joystick_DX5.Po
 	-rm -f ./$(DEPDIR)/Joystick_Linux.Po
+	-rm -f ./$(DEPDIR)/Joystick_Mister.Po
 	-rm -f ./$(DEPDIR)/Joystick_SDL.Po
 	-rm -f ./$(DEPDIR)/Joystick_XInput.Po
 	-rm -f ./$(DEPDIR)/TextEntry.Po
@@ -783,6 +787,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/Joystick.Po
 	-rm -f ./$(DEPDIR)/Joystick_DX5.Po
 	-rm -f ./$(DEPDIR)/Joystick_Linux.Po
+	-rm -f ./$(DEPDIR)/Joystick_Mister.Po
 	-rm -f ./$(DEPDIR)/Joystick_SDL.Po
 	-rm -f ./$(DEPDIR)/Joystick_XInput.Po
 	-rm -f ./$(DEPDIR)/TextEntry.Po

@@ -7,7 +7,7 @@ noinst_LIBRARIES	=	libmdfnsdl.a
 libmdfnsdl_a_SOURCES = main.cpp args.cpp help.cpp ers.cpp sound.cpp netplay.cpp
 
 libmdfnsdl_a_SOURCES += input.cpp mouse.cpp keyboard.cpp
-libmdfnsdl_a_SOURCES += Joystick.cpp Joystick_SDL.cpp
+libmdfnsdl_a_SOURCES += Joystick.cpp Joystick_SDL.cpp Joystick_Mister.cpp
 
 if HAVE_LINUX_JOYSTICK
 libmdfnsdl_a_SOURCES += Joystick_Linux.cpp
