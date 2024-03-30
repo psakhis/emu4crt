@@ -141,7 +141,7 @@ class JoystickDriver_Mister : public JoystickDriver
 
 JoystickDriver_Mister::JoystickDriver_Mister()
 {  	
- gmw_bindInputs();
+ gmw_bindInputs(MDFN_GetSettingS("mister.host").c_str());
  for(int n = 0; n < 2; n++)
  {
   try
