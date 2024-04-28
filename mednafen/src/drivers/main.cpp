@@ -67,6 +67,7 @@
 #include <mednafen/AtomicFIFO.h>
 
 static int PoC_start = 0; //psakhis mister
+static uint8_t PoC_rgb_mode = 0; //psakhis rgb_mode
 
 static bool SuppressErrorPopups;	// Set from env variable "MEDNAFEN_NOPOPUPS"
 
@@ -162,7 +163,7 @@ static const MDFNSetting DriverSettings[] =
 //psakhis
   { "mister.host", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer ip."), NULL, MDFNST_STRING, "192.168.137.136" },
   { "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
-  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4, 2-LZ4HC)"), NULL, MDFNST_UINT, "1", "0", "2" },
+  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4, 2-LZ4HC, 3-ADAPTATIVE)"), NULL, MDFNST_UINT, "3", "0", "3" },
   { "mister.vsync", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer vcount line for sync with nogpu. 0 for automatic vsync."), NULL, MDFNST_UINT, "0", "0", "240" },
 //end psakhis
   { "input.grab.strategy", MDFNSF_NOFLAGS, gettext_noop("Input grabbing strategy."), gettext_noop("Selects the conditions for and extent of system keyboard and mouse grabbing when input grabbing is toggled on.\n\nNote that regardless of this setting, system keyboard grabbing is temporarily disabled while in the cheat interface, debugger, or netplay console text entry."), MDFNST_ENUM, "full", NULL, NULL, NULL, NULL, InputGrabStrat_List },
@@ -2880,11 +2881,11 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 //psakhis mister  
  
   if (use_mister)
-  {
-  	  	
-	  if (PoC_start == 0) 
-	  {   
-		mister.Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan); 
+  {  	    	            	
+	  if (PoC_start == 0) 	  
+	  {   		  	
+	  	PoC_rgb_mode = ((MDFN_GetSettingI("video.glformat") == 4 || MDFN_GetSettingI("video.glformat") == 6) && (CurGame->ExtraVideoFormatSupport & EVFSUPPORT_RGB565)) ? 2 : 0;		  	
+		mister.Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
 		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
 		mister.Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
 		PoC_start = 1;
@@ -2907,7 +2908,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
          
          if (lw && lw[0] != ~0 && line_width == 0)
            line_width = lw[0];
-                   
+                             
 	  if (line_width > 0 && rect->h > 0)
 	  {   
 		   	
@@ -2942,16 +2943,32 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		  	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
 		        {
 		   		int r, g, b;
-		   
-		        	if(surface->format.opp == 2)
-		         	 surface->format.DecodeColor(surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
-		        	else
-		         	 surface->format.DecodeColor(surface->pixels[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
 		
-		        	tmp_buffer[tmp_inc] = b;
-		        	tmp_buffer[tmp_inc+1] = g;
-		        	tmp_buffer[tmp_inc+2] = r;		        	
-		        	tmp_inc += 3;    
+		        	if(surface->format.opp == 2)
+		        	{
+		         		//surface->format.DecodeColor(surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
+		         		uint16_t pixel = surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)];
+		         		tmp_buffer[tmp_inc] = (pixel >> 0);
+		        		tmp_buffer[tmp_inc+1] = (pixel >> 8);
+		        		tmp_inc += 2; 
+		         	}	
+		        	else
+		        	{
+		        		if (PoC_rgb_mode == 2)
+		        		{
+		        			tmp_buffer[tmp_inc] = 0x00;
+		        			tmp_buffer[tmp_inc+1] = 0x00;		        		   		        				        				        			
+		        			tmp_inc += 2; 		        				        		
+		        		}
+		        		else
+		        		{
+		         	 		surface->format.DecodeColor(surface->pixels[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
+		         	 		tmp_buffer[tmp_inc] = b;
+		        			tmp_buffer[tmp_inc+1] = g;
+		        			tmp_buffer[tmp_inc+2] = r;		        	
+		        			tmp_inc += 3;    
+		        		}	
+		         	}					        	
 		        	tmp_pix++;    	
 		        	//printf("RGB[%d]:%02hhX %02hhX %02hhX ",x,r,g,b);
 		        	
@@ -2968,9 +2985,13 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
 		        	{	
 		        		tmp_buffer[tmp_inc] = 0x00;
-		        		tmp_buffer[tmp_inc+1] = 0x00;
-		        		tmp_buffer[tmp_inc+2] = 0x00;
-		        		tmp_inc += 3;    
+		        		tmp_buffer[tmp_inc+1] = 0x00;		        		   
+		        		if(PoC_rgb_mode != 2)
+		        		{
+		        			tmp_buffer[tmp_inc+2] = 0x00;
+		        			tmp_inc++;    
+		        		}	
+		        		tmp_inc += 2; 
 		        		tmp_pix++;    	
 		        	}	
 		        }

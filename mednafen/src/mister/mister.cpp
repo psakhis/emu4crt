@@ -33,9 +33,10 @@ void MiSTer::Close(void)
    gmw_close();
 }
 
-void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan)
-{   	
-   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, 0);
+void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode)
+{   
+	printf("rgb_mode %d\n",rgb_mode);	
+   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode);
    
    lz4_compress = lz4_frames;
    width_core = 0;	   	   
@@ -108,7 +109,7 @@ void MiSTer::Blit(uint16_t vsync)
    frame++;      
    gmw_fpgaStatus status;
    gmw_getStatus(&status);
-   if (status.frame > frame) frame = status.frame;  
+   if (status.frame > frame) frame = status.frame + 1;  
    gmw_blit(frame, vsync, 0);
 }
 
@@ -132,7 +133,8 @@ int MiSTer::getField(void)
    {
    	gmw_fpgaStatus status;
         gmw_getStatus(&status);
-        frameField = (status.frame > frame) ? status.vgaF1 : !frameField;         
+        //frameField = (status.frame > frame) ? status.vgaF1 : !frameField;         
+        frameField = !status.vgaF1 ^ ((frame - status.frame) % 2); //Calamity formula
 	field = frameField;		
    }
   
