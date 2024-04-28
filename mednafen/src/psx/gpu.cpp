@@ -1198,7 +1198,10 @@ static INLINE uint32 MDFN_NOWARN_UNUSED ShiftHelper(uint32 val, int shamt, uint3
 }
 #endif
 
-#pragma GCC push_options
+#if defined(__GNUC__) && !defined(__clang__)
+ #pragma GCC push_options
+ #pragma GCC optimize("no-unroll-loops,no-peel-loops,no-crossjumping")
+#endif
 #pragma GCC optimize("no-unroll-loops,no-peel-loops,no-crossjumping")
 static INLINE void ReorderRGB_Var(uint32 out_Rshift, uint32 out_Gshift, uint32 out_Bshift, bool bpp24, const uint16 *src, uint32 *dest, const int32 dx_start, const int32 dx_end, int32 fb_x)
 {
@@ -1241,7 +1244,9 @@ static NO_INLINE void ReorderRGB(bool bpp24, const uint16 *src, uint32 *dest, co
 {
  ReorderRGB_Var(out_Rshift, out_Gshift, out_Bshift, bpp24, src, dest, dx_start, dx_end, fb_x);
 }
-#pragma GCC pop_options
+#if defined(__GNUC__) && !defined(__clang__)
+ #pragma GCC pop_options
+#endif
 
 MDFN_FASTCALL pscpu_timestamp_t GPU_Update(const pscpu_timestamp_t sys_timestamp)
 {
