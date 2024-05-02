@@ -27,6 +27,8 @@
 #include <mednafen/hash/md5.h>
 #include <mednafen/math_ops.h>
 
+#include <mednafen/mister/groovymister_wrapper.h> //psakhis
+
 namespace MouseMan
 {
 //
@@ -37,6 +39,9 @@ static int32 MouseDataRel[4];
 static uint32 MouseDataButtons;
 static float MouseDataPointer[2];
 static int32 MouseDataPointerAsAxis[2];
+
+static uint8 mister_mouse; //psakhis
+static uint32 mister_frame; //psakhis
 //
 //
 //
@@ -62,6 +67,8 @@ void Init(void)
  memset(MouseDataPointer, 0, sizeof(MouseDataPointer));
  memset(MouseDataPointerAsAxis, 0, sizeof(MouseDataPointerAsAxis));
  MouseDataButtons = 0;
+ mister_mouse = 0; //psakhis
+ mister_frame = 0; //psakhis
 
  config_pending_bc = ButtConfig();
 }
@@ -73,10 +80,72 @@ void Init(void)
 */
 void UpdateMice(void)
 {
+ //psakhis
+ if (MDFN_GetSettingI("video.resolution_switch") == 4)
+ {
+ 	//gmw_set_log_level(2);
+ 	gmw_pollInputs();
+ 	gmw_fpgaPS2Inputs ps2Inputs; 	
+ 	gmw_getPS2Inputs(&ps2Inputs); 	 	
+ 	if ((ps2Inputs.ps2Mouse & (1 << 0)) && !(mister_mouse & (1 << 0)))
+ 	{
+ 		MouseState.button |= 1 << 0;
+		MouseState.button_realstate |= 1 << 0;
+	} 
+	if ((ps2Inputs.ps2Mouse & (1 << 1)) && !(mister_mouse & (1 << 1)))
+ 	{
+ 		MouseState.button |= 1 << 2;
+		MouseState.button_realstate |= 1 << 2;
+	} 
+	if ((ps2Inputs.ps2Mouse & (1 << 2)) && !(mister_mouse & (1 << 2)))
+ 	{
+ 		MouseState.button |= 1 << 1;
+		MouseState.button_realstate |= 1 << 1;
+	} 
+	if (!(ps2Inputs.ps2Mouse & (1 << 0)) && (mister_mouse & (1 << 0)))
+ 	{
+ 		MouseState.button_realstate &= ~(1 << 0);		
+	} 
+	if (!(ps2Inputs.ps2Mouse & (1 << 1)) && (mister_mouse & (1 << 1)))
+ 	{
+ 		MouseState.button_realstate &= ~(1 << 2);
+	} 
+	if (!(ps2Inputs.ps2Mouse & (1 << 2)) && (mister_mouse & (1 << 2)))
+ 	{
+ 		MouseState.button_realstate &= ~(1 << 1);
+	} 
+	mister_mouse = ps2Inputs.ps2Mouse;
+	
+	if (mister_frame != ps2Inputs.ps2Frame)
+	{
+		if (ps2Inputs.ps2Mouse & (1 << 4))
+		{						
+			MouseState.x += -255 + ps2Inputs.ps2MouseX;
+			MouseState.rel_accum[0] += -255 + ps2Inputs.ps2MouseX;
+		}			
+		else
+		{
+			MouseState.x += ps2Inputs.ps2MouseX;
+			MouseState.rel_accum[0] += ps2Inputs.ps2MouseX;
+		}
+		if (ps2Inputs.ps2Mouse & (1 << 5))
+		{
+			MouseState.y -= -255 + ps2Inputs.ps2MouseY;		
+			MouseState.rel_accum[1] -= -255 + ps2Inputs.ps2MouseY;
+		}	
+		else
+		{
+			MouseState.y -= ps2Inputs.ps2MouseY;		
+			MouseState.rel_accum[1] -= ps2Inputs.ps2MouseY;
+		}
+		mister_frame = ps2Inputs.ps2Frame;
+	}	
+ }
+ //end psakhis 	
  //printf("%08x -- %08x %08x\n", MouseState.button & (MouseState.button_realstate | ~MouseState.button_prevsent), MouseState.button, MouseState.button_realstate);
 
  Video_PtoV(MouseState.x, MouseState.y, &MouseDataPointer[0], &MouseDataPointer[1]);
- {
+ { printf("x %d y % d % pointers %f %f\n",MouseState.x, MouseState.y, &MouseDataPointer[0], &MouseDataPointer[1]);
   const int32 nw_nh_min = std::min<int32>(CurGame->nominal_width, CurGame->nominal_height);
 
   MouseDataPointerAsAxis[0] = std::min<int32>(32767, std::max<int32>(-32768, 32768 * (MouseDataPointer[0] * 2 - 1) * CurGame->nominal_width  / nw_nh_min));
@@ -109,7 +178,6 @@ void Event(const SDL_Event* event)
 	  config_pending_bc.DeviceID = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	  config_pending_bc.ButtonNum = event->button.button - 1;
 	 }
-
 	 MouseState.button |= 1 << (event->button.button - 1);
 	 MouseState.button_realstate |= 1 << (event->button.button - 1);
 	}
@@ -123,6 +191,7 @@ void Event(const SDL_Event* event)
         break;
 
   case SDL_MOUSEMOTION:
+  printf("event->motion.x %d event->motion.xrel %d\n",event->motion.x,event->motion.xrel);
 	MouseState.x = event->motion.x;
 	MouseState.y = event->motion.y;
 	MouseState.rel_accum[0] += event->motion.xrel;

@@ -36,9 +36,9 @@ Joystick_Mister::Joystick_Mister(unsigned index)
  {
   name = "MiSTer";
 
-  mister_num_axes = 0;
+  mister_num_axes = 4;
   mister_num_balls = 0;
-  mister_num_buttons = 9;
+  mister_num_buttons = 10;
   mister_num_hats = 1;
 
   Calc09xID(mister_num_axes, mister_num_balls, mister_num_hats, mister_num_buttons);
@@ -77,15 +77,33 @@ Joystick_Mister::~Joystick_Mister()
 
 void Joystick_Mister::UpdateInternal(int joyn)
 {
- gmw_fpgaInputs inputs;
- gmw_getInputs(&inputs);
- int map = (joyn == 0) ? inputs.joy1 : inputs.joy2;
- 
+ gmw_fpgaJoyInputs joyInputs;
+ gmw_getJoyInputs(&joyInputs);
+ int map = (joyn == 0) ? joyInputs.joy1 : joyInputs.joy2;
+ //gmw_set_log_level(2);
  for(unsigned i = 0; i < mister_num_axes; i++)
  {
-  //axis_state[i] = SDL_JoystickGetAxis(sdl_joy, i);
+  if (i == 0)
+  {
+  	axis_state[i] = (joyn == 0) ? ((joyInputs.joy1LXAnalog << 8) + joyInputs.joy1LXAnalog) : ((joyInputs.joy2LXAnalog << 8) + joyInputs.joy2LXAnalog);
+  }
+  else if (i == 1)
+  {
+  	axis_state[i] = (joyn == 0) ? ((joyInputs.joy1LYAnalog << 8) + joyInputs.joy1LYAnalog) : ((joyInputs.joy2LYAnalog << 8) + joyInputs.joy2LYAnalog);
+  }  
+  else if (i == 2)
+  {
+  	axis_state[i] = (joyn == 0) ? ((joyInputs.joy1RXAnalog << 8) + joyInputs.joy1RXAnalog) : ((joyInputs.joy2RXAnalog << 8) + joyInputs.joy2RXAnalog);
+  }  
+  else
+  {
+  	axis_state[i] = (joyn == 0) ? ((joyInputs.joy1RYAnalog << 8) + joyInputs.joy1RYAnalog) : ((joyInputs.joy2RYAnalog << 8) + joyInputs.joy2RYAnalog);
+  }  
+  //Mednafen::MDFN_printf(_("AXIS %d %d...\n"),i,axis_state[i]);
   if(axis_state[i] < -32767)
    axis_state[i] = -32767;
+  if(axis_state[i] > 32768)
+   axis_state[i] = 32768; 
  }
 
  for(unsigned i = 0; i < mister_num_balls; i++)
@@ -111,6 +129,7 @@ void Joystick_Mister::UpdateInternal(int joyn)
    	case 6: button_state[6] = map & GMW_JOY_B7;
    	case 7: button_state[7] = map & GMW_JOY_B8;
    	case 8: button_state[8] = map & GMW_JOY_B9;   	
+   	case 9: button_state[9] = map & GMW_JOY_B10;   	
    }	   
  }
 

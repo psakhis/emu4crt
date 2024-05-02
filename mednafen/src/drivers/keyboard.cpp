@@ -25,6 +25,8 @@
 
 #include <trio/trio.h>
 
+#include <mednafen/mister/groovymister_wrapper.h> //psakhis
+
 namespace KBMan
 {
 
@@ -33,6 +35,7 @@ namespace KBMan
 #define ICSS_CTRL	4
 
 uint8 keys[MKK_COUNT];
+uint8 keys_mister[32]; //psakhis
 uint32 mods[2][2];
 
 static ButtConfig config_pending_bc;
@@ -41,6 +44,7 @@ static bool config_isck;
 void Init(void)
 {
  memset(keys, 0, sizeof(keys));
+ memset(keys_mister, 0, sizeof(keys_mister)); //psakhis
  memset(mods, 0, sizeof(mods));
 }
 
@@ -120,7 +124,7 @@ bool Do_BC_ChangeCheck(ButtConfig* bc)
 }
 
 void Event(const SDL_Event* event)
-{
+{	
  switch(event->type)
  {
   case SDL_KEYDOWN:
@@ -158,6 +162,7 @@ void Event(const SDL_Event* event)
 	 if(s < MKK_COUNT)
 	 {
           keys[s] = (keys[s] & (KEYS_FLAG_KEYDOWN | KEYS_FLAG_KEYDOWN_SEEN)) | KEYS_FLAG_KEYDOWN;
+         
 	 }
 	}
 	break;
@@ -166,9 +171,10 @@ void Event(const SDL_Event* event)
 	{
 	 //printf("Up: %3u %08x %04x\n", event->key.keysym.scancode, event->key.keysym.sym, event->key.keysym.mod);
 	 size_t s = event->key.keysym.scancode;
-
+        
 	 if(s < MKK_COUNT)
-	  keys[s] |= KEYS_FLAG_KEYUP;
+	  keys[s] |= KEYS_FLAG_KEYUP;	 
+	
 	}
 	break;
  }
@@ -199,6 +205,35 @@ static void RecalcModsCache(void)
 
 void UpdateKeyboards(void)
 {
+ //psakhis
+ if (MDFN_GetSettingI("video.resolution_switch") == 4)
+ {
+ 	//gmw_set_log_level(2);
+ 	gmw_pollInputs();
+ 	gmw_fpgaPS2Inputs ps2Inputs; 	
+ 	gmw_getPS2Inputs(&ps2Inputs); 	
+ 	for (int i=0; i<256; i++)
+	{
+		int bit_pos = 1 & (ps2Inputs.ps2Keys[i / 8] >> (i % 8));		
+		int bit_pre = 1 & (keys_mister[i / 8] >> (i % 8));
+		if (bit_pre != bit_pos) 
+		{			
+			if (bit_pos)
+			{
+				//Mednafen::MDFN_printf(_("mister key up %d...\n"),i);
+				keys[i] = (keys[i] & (KEYS_FLAG_KEYDOWN | KEYS_FLAG_KEYDOWN_SEEN)) | KEYS_FLAG_KEYDOWN;
+				
+			}
+			else
+			{
+				//Mednafen::MDFN_printf(_("mister key down %d...\n"),i);
+				keys[i] |= KEYS_FLAG_KEYUP;	 
+			}
+		}	
+	}		
+	memcpy(&keys_mister, &ps2Inputs.ps2Keys, sizeof(keys_mister)); 		
+ }	
+ //end psakhis
  for(unsigned i = 0; i < MKK_COUNT; i++)
  {
   uint8 tmp = keys[i];

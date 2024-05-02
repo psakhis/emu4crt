@@ -34,8 +34,7 @@ void MiSTer::Close(void)
 }
 
 void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode)
-{   
-	printf("rgb_mode %d\n",rgb_mode);	
+{   	
    gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode);
    
    lz4_compress = lz4_frames;
