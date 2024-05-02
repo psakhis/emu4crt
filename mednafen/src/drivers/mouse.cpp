@@ -145,7 +145,7 @@ void UpdateMice(void)
  //printf("%08x -- %08x %08x\n", MouseState.button & (MouseState.button_realstate | ~MouseState.button_prevsent), MouseState.button, MouseState.button_realstate);
 
  Video_PtoV(MouseState.x, MouseState.y, &MouseDataPointer[0], &MouseDataPointer[1]);
- { printf("x %d y % d % pointers %f %f\n",MouseState.x, MouseState.y, &MouseDataPointer[0], &MouseDataPointer[1]);
+ { 
   const int32 nw_nh_min = std::min<int32>(CurGame->nominal_width, CurGame->nominal_height);
 
   MouseDataPointerAsAxis[0] = std::min<int32>(32767, std::max<int32>(-32768, 32768 * (MouseDataPointer[0] * 2 - 1) * CurGame->nominal_width  / nw_nh_min));
@@ -190,8 +190,7 @@ void Event(const SDL_Event* event)
 	}
         break;
 
-  case SDL_MOUSEMOTION:
-  printf("event->motion.x %d event->motion.xrel %d\n",event->motion.x,event->motion.xrel);
+  case SDL_MOUSEMOTION:  
 	MouseState.x = event->motion.x;
 	MouseState.y = event->motion.y;
 	MouseState.rel_accum[0] += event->motion.xrel;
