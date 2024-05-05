@@ -1087,7 +1087,7 @@ static bool sc_blit_timesync;
 
 static bool sound_active;	// true if sound is enabled and initialized
 
-static MiSTer mister; //psakhis mister
+static MiSTer* mister = nullptr; //psakhis mister
 static EmuRealSyncher ers;
 
 static bool autosave_load_error = false;
@@ -1261,7 +1261,9 @@ static void CloseGame(void)
 	
 	if (use_mister)
 	{
-		mister.Close();
+		mister->Close();
+		delete mister;
+		mister = nullptr;
 	}
 	
 	//psakhis end
@@ -2883,11 +2885,12 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
   if (use_mister)
   {  	    	            	
 	  if (PoC_start == 0) 	  
-	  {   		  	
+	  {   	
+	  	mister = new MiSTer();	  	
 	  	PoC_rgb_mode = ((MDFN_GetSettingI("video.glformat") == 4 || MDFN_GetSettingI("video.glformat") == 6) && (CurGame->ExtraVideoFormatSupport & EVFSUPPORT_RGB565)) ? 2 : 0;		  	
-		mister.Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
+		mister->Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
 		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
-		mister.Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
+		mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
 		PoC_start = 1;
 	  }  
   
@@ -2896,7 +2899,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  	resolution_to_change = false;
 	  	if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated))   
 	  	{
-			 mister.Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
+			 mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
 			 current_game_resolution_w = resolution_to_change_w;
 			 current_game_resolution_h = resolution_to_change_h;						 
 		} 
@@ -2916,21 +2919,21 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   		   
 		   uint32_t totalPixels = current_game_resolution_w * current_game_resolution_h;
 		   
-		   if (mister.is480p() && current_game_resolution_h < 480) //prepare to add scanlines
+		   if (mister->is480p() && current_game_resolution_h < 480) //prepare to add scanlines
 		   {
 		   	 totalPixels = totalPixels << 1;
 		   }	 
 		   
-		   if ((mister.isInterlaced() && current_game_resolution_h > 240) || (mister.isDownscaled())) 
+		   if ((mister->isInterlaced() && current_game_resolution_h > 240) || (mister->isDownscaled())) 
 		   {
 		   	totalPixels = totalPixels >> 1; // div2		   	
 		   } 
 		   
-		   char *tmp_buffer = mister.getPBufferBlit();		   		 		   		   
+		   char *tmp_buffer = mister->getPBufferBlit();		   		 		   		   
 		   uint32 tmp_inc = 0;      		   	  		   
 		   uint32 tmp_pix = 0;
 		   //rgb			   		   		  		   	  			   		   		    
-		   for(int y = mister.getField(); y < rect->h; y++)
+		   for(int y = mister->getField(); y < rect->h; y++)
 		   {   	 		   			   			   	 	 
 		  	line_width = rect->w;	
 		        int x_base = rect->x;
@@ -2978,9 +2981,9 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
      		        if (tmp_pix >= totalPixels)
 		         break;		        		        
 		        
-		        if ((mister.isInterlaced() && current_game_resolution_h > 240) || mister.isDownscaled()) y++; 
+		        if ((mister->isInterlaced() && current_game_resolution_h > 240) || mister->isDownscaled()) y++; 
 		        
-		        if (mister.is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
+		        if (mister->is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
 		        {
 		        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
 		        	{	
@@ -2997,10 +3000,10 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        }
 		   }		    		  		  
 		   
-		   char *tmp_audio = mister.getPBufferAudio();	
+		   char *tmp_audio = mister->getPBufferAudio();	
 		   uint16_t bytesSound = Count << CurGame->soundchan;       
          	   memcpy(&tmp_audio[0], Buffer, bytesSound);
-         	   mister.Audio(bytesSound);		   		 
+         	   mister->Audio(bytesSound);		   		 
 		   
 		   if (AudioThreadACK != 1)
 		   {      
@@ -3008,8 +3011,8 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 			   CountAudioThread = Count;    
 			   MThreading::Sem_Post(AUWakeupSem);        
 		   }       		 		   
-		   mister.Blit(MDFN_GetSettingI("mister.vsync"));		  		   		 
-		   mister.Sync();	  	
+		   mister->Blit(MDFN_GetSettingI("mister.vsync"));		  		   		 
+		   mister->Sync();	  	
    	  }
    }	   
  //end psakhis mister
