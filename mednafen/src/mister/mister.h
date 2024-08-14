@@ -9,9 +9,9 @@ class MiSTer
  char* getPBufferBlit(void);    
  char* getPBufferAudio(void);    
  void Close(void);
- void Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan);
- void Switchres(int w, int h, double vfreq, int orientation);
- void Blit(uint16_t vsync); 
+ void Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode, uint16_t mister_mtu);
+ void Switchres(int w, int h, double vfreq, int orientation, bool interlaced_fb);
+ void Blit(uint16_t vsync, uint8_t field); 
  void Audio(uint16_t soundSize);
  void Sync(void); 
  

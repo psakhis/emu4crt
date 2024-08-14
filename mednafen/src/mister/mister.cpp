@@ -33,9 +33,9 @@ void MiSTer::Close(void)
    gmw_close();
 }
 
-void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode)
+void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode, uint16_t mister_mtu)
 {   	
-   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode);
+   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode, mister_mtu);
    
    lz4_compress = lz4_frames;
    width_core = 0;	   	   
@@ -49,7 +49,7 @@ void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames
    gmw_set_log_level(0); 
 }
 
-void MiSTer::Switchres(int w, int h, double vfreq, int orientation)
+void MiSTer::Switchres(int w, int h, double vfreq, int orientation, bool interlaced_fb)
 {
    //printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,orientation);     
   
@@ -97,19 +97,20 @@ void MiSTer::Switchres(int w, int h, double vfreq, int orientation)
            downscaled = (h > vactive) ? 1 : 0;	   	      	
            is480 = (!interlaced && (vactive > 288 || h == vactive >> 1)) ? 1 : 0;  
    	      		   
-	   buffer_prog = (interlaced && !lz4_compress) ? 0 : 1;	   	 
+	   //buffer_prog = (interlaced && !lz4_compress) ? 0 : 1;	   	 
+	   buffer_prog = (!interlaced_fb || !interlaced) ? 1 : 0;
 	   gmw_switchres(px, hactive, hbegin, hend, htotal, vactive, vbegin, vend, vtotal, (interlaced && buffer_prog) ? 2 : interlace);
    }   
      
 }
 
-void MiSTer::Blit(uint16_t vsync)
+void MiSTer::Blit(uint16_t vsync, uint8_t field)
 {    
    frame++;      
    gmw_fpgaStatus status;
    gmw_getStatus(&status);
    if (status.frame > frame) frame = status.frame + 1;  
-   gmw_blit(frame, vsync, 0);
+   gmw_blit(frame, field, vsync, 0);
 }
 
 
