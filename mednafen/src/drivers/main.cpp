@@ -162,9 +162,12 @@ static const MDFNSetting DriverSettings[] =
   { "input.ckdelay", MDFNSF_NOFLAGS, gettext_noop("Dangerous key action delay."), gettext_noop("The length of time, in milliseconds, that a button/key corresponding to a \"dangerous\" command like power, reset, exit, etc. must be pressed before the command is executed."), MDFNST_UINT, "0", "0", "99999" },
 //psakhis
   { "mister.host", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer ip."), NULL, MDFNST_STRING, "192.168.137.136" },
-  { "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
-  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4, 2-LZ4HC, 3-ADAPTATIVE)"), NULL, MDFNST_UINT, "3", "0", "3" },
+  //{ "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
+  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4, 2-LZ4HC, 3-LZ ADAPTATIVE)"), NULL, MDFNST_UINT, "1", "0", "3" },
   { "mister.vsync", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer vcount line for sync with nogpu. 0 for automatic vsync."), NULL, MDFNST_UINT, "0", "0", "240" },
+  { "mister.mtu", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer mtu. 1500 or 3800 for jumbo frames."), NULL, MDFNST_UINT, "1500", "1500", "3800" },
+  { "mister.interlaced_fb", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer interlaced framebuffer."), NULL, MDFNST_BOOL, "1", },
+  //{ "mister.scanlines", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer scanlines for arcade_31 monitor"), NULL, MDFNST_BOOL, "1", },
 //end psakhis
   { "input.grab.strategy", MDFNSF_NOFLAGS, gettext_noop("Input grabbing strategy."), gettext_noop("Selects the conditions for and extent of system keyboard and mouse grabbing when input grabbing is toggled on.\n\nNote that regardless of this setting, system keyboard grabbing is temporarily disabled while in the cheat interface, debugger, or netplay console text entry."), MDFNST_ENUM, "full", NULL, NULL, NULL, NULL, InputGrabStrat_List },
 
@@ -2888,9 +2891,10 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  {   	
 	  	mister = new MiSTer();	  	
 	  	PoC_rgb_mode = ((MDFN_GetSettingI("video.glformat") == 4 || MDFN_GetSettingI("video.glformat") == 6) && (CurGame->ExtraVideoFormatSupport & EVFSUPPORT_RGB565)) ? 2 : 0;		  	
-		mister->Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
-		MDFN_printf(_("MiSTer host=%s:%d Lz4=%d Vsync=%d\n"),MDFN_GetSettingS("mister.host").c_str(),MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"));  
-		mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 		
+		//mister->Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
+		mister->Init(MDFN_GetSettingS("mister.host").c_str(), 32100, MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode, MDFN_GetSettingI("mister.mtu")); 
+		MDFN_printf(_("MiSTer host=%s Lz4=%d Vsync=%d MTU=%d Interlaced_fb=%d\n"),MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"), MDFN_GetSettingI("mister.mtu"), MDFN_GetSettingB("mister.interlaced_fb"));  
+		mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0, MDFN_GetSettingB("mister.interlaced_fb")); 		
 		PoC_start = 1;
 	  }  
   
@@ -2899,7 +2903,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  	resolution_to_change = false;
 	  	if ((current_game_resolution_w != resolution_to_change_w) || (current_game_resolution_h != resolution_to_change_h) || (current_game_rotated != CurGame->rotated))   
 	  	{
-			 mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0); 	        	  
+			 mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0, MDFN_GetSettingB("mister.interlaced_fb")); 	        	  
 			 current_game_resolution_w = resolution_to_change_w;
 			 current_game_resolution_h = resolution_to_change_h;						 
 		} 
@@ -2932,8 +2936,10 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   char *tmp_buffer = mister->getPBufferBlit();		   		 		   		   
 		   uint32 tmp_inc = 0;      		   	  		   
 		   uint32 tmp_pix = 0;
+		   
+		   uint8_t field = mister->getField();
 		   //rgb			   		   		  		   	  			   		   		    
-		   for(int y = mister->getField(); y < rect->h; y++)
+		   for(int y = field; y < rect->h; y++)
 		   {   	 		   			   			   	 	 
 		  	line_width = rect->w;	
 		        int x_base = rect->x;
@@ -2983,21 +2989,24 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        
 		        if ((mister->isInterlaced() && current_game_resolution_h > 240) || mister->isDownscaled()) y++; 
 		        
-		        if (mister->is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
-		        {
-		        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
-		        	{	
-		        		tmp_buffer[tmp_inc] = 0x00;
-		        		tmp_buffer[tmp_inc+1] = 0x00;		        		   
-		        		if(PoC_rgb_mode != 2)
-		        		{
-		        			tmp_buffer[tmp_inc+2] = 0x00;
-		        			tmp_inc++;    
-		        		}	
-		        		tmp_inc += 2; 
-		        		tmp_pix++;    	
-		        	}	
-		        }
+		        //if (MDFN_GetSettingB("mister.scanlines"))
+		        //{
+			        if (mister->is480p() && current_game_resolution_h < 480) //do scanlines for 31khz
+			        {
+			        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
+			        	{	
+			        		tmp_buffer[tmp_inc] = 0x00;
+			        		tmp_buffer[tmp_inc+1] = 0x00;		        		   
+			        		if(PoC_rgb_mode != 2)
+			        		{
+			        			tmp_buffer[tmp_inc+2] = 0x00;
+			        			tmp_inc++;    
+			        		}	
+			        		tmp_inc += 2; 
+			        		tmp_pix++;    	
+			        	}	
+			        }
+			//}
 		   }		    		  		  
 		   
 		   char *tmp_audio = mister->getPBufferAudio();	
@@ -3011,7 +3020,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 			   CountAudioThread = Count;    
 			   MThreading::Sem_Post(AUWakeupSem);        
 		   }       		 		   
-		   mister->Blit(MDFN_GetSettingI("mister.vsync"));		  		   		 
+		   mister->Blit(MDFN_GetSettingI("mister.vsync"), field);		  		   		 
 		   mister->Sync();	  	
    	  }
    }	   
