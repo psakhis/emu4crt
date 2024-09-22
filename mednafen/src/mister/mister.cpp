@@ -18,9 +18,14 @@ MiSTer::~MiSTer()
    sr_deinit();   
 }
 
-char* MiSTer::getPBufferBlit(void)
+char* MiSTer::getPBufferBlit(uint8_t field)
 {
-   return gmw_get_pBufferBlit();     
+   return gmw_get_pBufferBlit(field);     
+}
+
+char* MiSTer::getPBufferBlitDelta(void)
+{
+   return gmw_get_pBufferBlitDelta();     
 }
 
 char* MiSTer::getPBufferAudio(void)
@@ -29,13 +34,16 @@ char* MiSTer::getPBufferAudio(void)
 }
 
 void MiSTer::Close(void)
-{   	 
+{          
    gmw_close();
 }
 
 void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode, uint16_t mister_mtu)
-{   	
-   gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode, mister_mtu);
+{  
+   if (gmw_init(mister_host, lz4_frames, sound_rate, sound_chan, rgb_mode, mister_mtu) < 0)
+     connectError = 1;
+   else
+     connectError = 0;  
    
    lz4_compress = lz4_frames;
    width_core = 0;	   	   
@@ -52,7 +60,9 @@ void MiSTer::Init(const char* mister_host, short mister_port, uint8_t lz4_frames
 void MiSTer::Switchres(int w, int h, double vfreq, int orientation, bool interlaced_fb)
 {
    //printf("  VIDEO - Video_SetSwitchres - called for %dx%d@%f (%d) \n",w,h,vfreq,orientation);     
-  
+   if (connectError)
+      return;
+    
    if (w < 200 || h < 160)
      return;
      
@@ -104,24 +114,33 @@ void MiSTer::Switchres(int w, int h, double vfreq, int orientation, bool interla
      
 }
 
-void MiSTer::Blit(uint16_t vsync, uint8_t field)
+void MiSTer::Blit(uint16_t vsync, uint8_t field, uint32_t match_delta)
 {    
+   if (connectError)
+      return;
+      	
    frame++;      
    gmw_fpgaStatus status;
    gmw_getStatus(&status);
-   if (status.frame > frame) frame = status.frame + 1;  
-   gmw_blit(frame, field, vsync, 0);
+   if (status.frame > frame) frame = status.frame + 1;   
+   gmw_blit(frame, field, vsync, 0, match_delta);
 }
 
 
 void MiSTer::Audio(uint16_t soundSize)
 {
+   if (connectError)
+      return;
+      
    gmw_audio(soundSize);	
 }
 
 
 void MiSTer::Sync()
 {  	
+   if (connectError)
+      return;
+      	
    gmw_waitSync();
 }
 
@@ -154,6 +173,11 @@ bool MiSTer::is480p(void)
 bool MiSTer::isDownscaled(void)
 {
    return downscaled;
+}
+
+bool MiSTer::isConnectError(void)
+{
+   return connectError;
 }
 
 

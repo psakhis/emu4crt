@@ -163,7 +163,7 @@ static const MDFNSetting DriverSettings[] =
 //psakhis
   { "mister.host", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer ip."), NULL, MDFNST_STRING, "192.168.137.136" },
   //{ "mister.port", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer port."), NULL, MDFNST_UINT, "32100", "1", "65535" },
-  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-raw, 1-LZ4, 2-LZ4HC, 3-LZ ADAPTATIVE)"), NULL, MDFNST_UINT, "1", "0", "3" },
+  { "mister.lz4", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer compress frames. (0-RAW, 1-LZ4, 2-LZ4_DELTA, 3-LZ4HC, 4-LZ4HC_DELTA, 5-LZ ADAPTATIVE, 6-LZ ADAPTATIVE DELTA)"), NULL, MDFNST_UINT, "1", "0", "6" },
   { "mister.vsync", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer vcount line for sync with nogpu. 0 for automatic vsync."), NULL, MDFNST_UINT, "0", "0", "240" },
   { "mister.mtu", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer mtu. 1500 or 3800 for jumbo frames."), NULL, MDFNST_UINT, "1500", "1500", "3800" },
   { "mister.interlaced_fb", MDFNSF_NOFLAGS, gettext_noop("GroovyMiSTer interlaced framebuffer."), NULL, MDFNST_BOOL, "1", },
@@ -1091,6 +1091,7 @@ static bool sc_blit_timesync;
 static bool sound_active;	// true if sound is enabled and initialized
 
 static MiSTer* mister = nullptr; //psakhis mister
+static bool mister_error = false;
 static EmuRealSyncher ers;
 
 static bool autosave_load_error = false;
@@ -2785,7 +2786,7 @@ void Mednafen::MDFND_MidSync(EmulateSpecStruct *espec, const unsigned flags)
   ers.AddEmuTime((espec->MasterCycles - espec->MasterCycles_DriverProcessed) / CurGameSpeed, false);
   espec->MasterCycles_DriverProcessed = espec->MasterCycles;
   //
-  if (use_mister == false) //psakhis
+  if (use_mister == false || mister_error) //psakhis
   {
   	UpdateSoundSync(sbuf, scount);
   	espec->SoundBufSize_DriverProcessed += scount;
@@ -2885,7 +2886,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 
 //psakhis mister  
  
-  if (use_mister)
+  if (use_mister && !mister_error)
   {  	    	            	
 	  if (PoC_start == 0) 	  
 	  {   	
@@ -2893,6 +2894,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 	  	PoC_rgb_mode = ((MDFN_GetSettingI("video.glformat") == 4 || MDFN_GetSettingI("video.glformat") == 6) && (CurGame->ExtraVideoFormatSupport & EVFSUPPORT_RGB565)) ? 2 : 0;		  	
 		//mister->Init(MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.port"), MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode); 
 		mister->Init(MDFN_GetSettingS("mister.host").c_str(), 32100, MDFN_GetSettingI("mister.lz4"), MDFN_GetSettingI("sound.rate"), CurGame->soundchan, PoC_rgb_mode, MDFN_GetSettingI("mister.mtu")); 
+		mister_error = mister->isConnectError();
 		MDFN_printf(_("MiSTer host=%s Lz4=%d Vsync=%d MTU=%d Interlaced_fb=%d\n"),MDFN_GetSettingS("mister.host").c_str(), MDFN_GetSettingI("mister.lz4"),MDFN_GetSettingI("mister.vsync"), MDFN_GetSettingI("mister.mtu"), MDFN_GetSettingB("mister.interlaced_fb"));  
 		mister->Switchres(resolution_to_change_w, resolution_to_change_h, resolution_to_change_vfreq, 0, MDFN_GetSettingB("mister.interlaced_fb")); 		
 		PoC_start = 1;
@@ -2932,12 +2934,15 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		   {
 		   	totalPixels = totalPixels >> 1; // div2		   	
 		   } 
-		   
-		   char *tmp_buffer = mister->getPBufferBlit();		   		 		   		   
+		   		   	   		 		   		   
 		   uint32 tmp_inc = 0;      		   	  		   
 		   uint32 tmp_pix = 0;
+		   uint32 tmp_match_delta = 0;
 		   
 		   uint8_t field = mister->getField();
+		   uint8_t *tmp_buffer = (uint8_t*) mister->getPBufferBlit(field);
+		   uint8_t *tmp_buffer_delta = (uint8_t*) mister->getPBufferBlitDelta();
+		   
 		   //rgb			   		   		  		   	  			   		   		    
 		   for(int y = field; y < rect->h; y++)
 		   {   	 		   			   			   	 	 
@@ -2957,6 +2962,24 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        	{
 		         		//surface->format.DecodeColor(surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
 		         		uint16_t pixel = surface->pixels16[(y + rect->y) * pitchinpix + (x + x_base)];
+		         		if (tmp_buffer[tmp_inc] == (pixel >> 0))
+		         		{
+		         			tmp_match_delta++;
+		         			tmp_buffer_delta[tmp_inc] = 0x00;
+		         		}
+		         		else
+		         		{
+		         			tmp_buffer_delta[tmp_inc] = (uint8_t) (pixel >> 0) - (uint8_t) tmp_buffer[tmp_inc];
+		         		}
+		         		if (tmp_buffer[tmp_inc+1] == (pixel >> 8))
+		         		{
+		         			tmp_match_delta++;
+		         			tmp_buffer_delta[tmp_inc+1] = 0x00;
+		         		}
+		         		else
+		         		{
+		         			tmp_buffer_delta[tmp_inc+1] = (uint8_t) (pixel >> 8) - (uint8_t) tmp_buffer[tmp_inc+1];
+		         		}
 		         		tmp_buffer[tmp_inc] = (pixel >> 0);
 		        		tmp_buffer[tmp_inc+1] = (pixel >> 8);
 		        		tmp_inc += 2; 
@@ -2964,17 +2987,47 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 		        	else
 		        	{
 		        		if (PoC_rgb_mode == 2)
-		        		{
+		        		{		        			
 		        			tmp_buffer[tmp_inc] = 0x00;
-		        			tmp_buffer[tmp_inc+1] = 0x00;		        		   		        				        				        			
+		        			tmp_buffer[tmp_inc+1] = 0x00;
+		        			tmp_buffer_delta[tmp_inc] = 0x00;
+		        			tmp_buffer_delta[tmp_inc+1] = 0x00;
+		        			tmp_match_delta += 2;
 		        			tmp_inc += 2; 		        				        		
 		        		}
 		        		else
 		        		{
 		         	 		surface->format.DecodeColor(surface->pixels[(y + rect->y) * pitchinpix + (x + x_base)], r, g, b);
+		         	 		if (tmp_buffer[tmp_inc] == b)
+		         			{
+		         				tmp_match_delta++;
+		         				tmp_buffer_delta[tmp_inc] = 0x00;
+		         			}
+		         			else
+		         			{
+		         				tmp_buffer_delta[tmp_inc] = (uint8_t) (b) - (uint8_t) tmp_buffer[tmp_inc];		         				
+		         			}
+		         			if (tmp_buffer[tmp_inc+1] == g)
+		         			{
+		         				tmp_match_delta++;
+		         				tmp_buffer_delta[tmp_inc+1] = 0x00;
+		         			}
+		         			else
+		         			{
+		         				tmp_buffer_delta[tmp_inc+1] = (uint8_t) (g) - (uint8_t) tmp_buffer[tmp_inc+1];
+		         			}
+		         			if (tmp_buffer[tmp_inc+2] == r)
+		         			{
+		         				tmp_match_delta++;
+		         				tmp_buffer_delta[tmp_inc+2] = 0x00;
+		         			}
+		         			else
+		         			{
+		         				tmp_buffer_delta[tmp_inc+2] = (uint8_t) (r) - (uint8_t) tmp_buffer[tmp_inc+2];
+		         			}
 		         	 		tmp_buffer[tmp_inc] = b;
 		        			tmp_buffer[tmp_inc+1] = g;
-		        			tmp_buffer[tmp_inc+2] = r;		        	
+		        			tmp_buffer[tmp_inc+2] = r;			        				        	
 		        			tmp_inc += 3;    
 		        		}	
 		         	}					        	
@@ -2996,10 +3049,15 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 			        	for(int x = 0; MDFN_LIKELY(x < line_width); x++)
 			        	{	
 			        		tmp_buffer[tmp_inc] = 0x00;
-			        		tmp_buffer[tmp_inc+1] = 0x00;		        		   
+			        		tmp_buffer[tmp_inc+1] = 0x00;		        		 
+   			        		tmp_buffer_delta[tmp_inc] = 0x00;
+			        		tmp_buffer_delta[tmp_inc+1] = 0x00;		        		   
+  						tmp_match_delta += 2;
 			        		if(PoC_rgb_mode != 2)
 			        		{
 			        			tmp_buffer[tmp_inc+2] = 0x00;
+			        			tmp_buffer_delta[tmp_inc+2] = 0x00;
+			        			tmp_match_delta++;
 			        			tmp_inc++;    
 			        		}	
 			        		tmp_inc += 2; 
@@ -3007,6 +3065,20 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 			        	}	
 			        }
 			//}
+		   }
+		   
+		   if (tmp_pix < totalPixels) //sometimes blit less pixels than switchres (genesis)
+		   {
+		   	memset(&tmp_buffer[tmp_inc], 0x00, (totalPixels - tmp_pix) * (surface->format.opp == 2 ? 2 : 3));
+		   	memset(&tmp_buffer_delta[tmp_inc], 0x00, (totalPixels - tmp_pix) * (surface->format.opp == 2 ? 2 : 3));
+		   	if (surface->format.opp == 2)
+		   	{
+		   		tmp_match_delta += (totalPixels - tmp_pix) * 2;
+		   	}
+		   	else
+		   	{
+		   		tmp_match_delta += (totalPixels - tmp_pix) * 3;
+		   	}		   	
 		   }		    		  		  
 		   
 		   char *tmp_audio = mister->getPBufferAudio();	
@@ -3020,7 +3092,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
 			   CountAudioThread = Count;    
 			   MThreading::Sem_Post(AUWakeupSem);        
 		   }       		 		   
-		   mister->Blit(MDFN_GetSettingI("mister.vsync"), field);		  		   		 
+		   mister->Blit(MDFN_GetSettingI("mister.vsync"), field, tmp_match_delta);		  		   		 
 		   mister->Sync();	  	
    	  }
    }	   
@@ -3044,7 +3116,7 @@ static bool MDFND_Update(int WhichVideoBuffer, int16 *Buffer, int Count)
   ret |= PassBlit(WhichVideoBuffer);
  }
  
- if (use_mister == false)  //psakhis
+ if (use_mister == false || mister_error)  //psakhis
   UpdateSoundSync(Buffer, Count);
 
  GameThread_HandleEvents();

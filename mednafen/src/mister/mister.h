@@ -6,12 +6,13 @@ class MiSTer
  MiSTer();
  ~MiSTer(); 
  
- char* getPBufferBlit(void);    
+ char* getPBufferBlitDelta(void);    
+ char* getPBufferBlit(uint8_t field);    
  char* getPBufferAudio(void);    
  void Close(void);
  void Init(const char* mister_host, short mister_port, uint8_t lz4_frames, uint32_t sound_rate, uint8_t sound_chan, uint8_t rgb_mode, uint16_t mister_mtu);
  void Switchres(int w, int h, double vfreq, int orientation, bool interlaced_fb);
- void Blit(uint16_t vsync, uint8_t field); 
+ void Blit(uint16_t vsync, uint8_t field, uint32_t match_delta); 
  void Audio(uint16_t soundSize);
  void Sync(void); 
  
@@ -19,6 +20,7 @@ class MiSTer
  bool isInterlaced(void);
  bool is480p(void);
  bool isDownscaled(void);
+ bool isConnectError(void);
  
  private:
   
@@ -33,5 +35,7 @@ class MiSTer
  uint8_t  buffer_prog = 0;
  uint8_t  downscaled = 0;                      
  uint8_t  is480 = 0;                      
+ 
+ uint8_t  connectError = 0;               
 };
 
